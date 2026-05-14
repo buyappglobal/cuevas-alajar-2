@@ -645,6 +645,12 @@ export default function AdminApp() {
           const isAuthorizedEmail = u.email && authorizedEmails.some(e => e.toLowerCase() === u.email?.toLowerCase());
           
           if (isAuthorizedEmail) {
+            try {
+              // Ensure the user's admin document exists so Firestore rules pass
+              await setDoc(doc(db, 'admins', u.uid), { email: u.email }, { merge: true });
+            } catch (err) {
+              console.error("Could not bootstrap admin doc:", err);
+            }
             setIsAdmin(true);
             fetchData();
           } else {
