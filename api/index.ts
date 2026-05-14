@@ -474,11 +474,19 @@ app.post(['/api/resend/sync', '/resend-sync'], async (req, res) => {
     const imported: any[] = [];
     
     for (const email of list.data) {
-      if (!email.subject || !email.subject.includes('Tu entrada confirmada - Peña de Arias Montano')) continue;
+      console.log(`🔍 Analizando correo: "${email.subject}"`);
+      if (!email.subject || !email.subject.includes('Tu entrada confirmada')) {
+        console.log(`⏭️ Saltando correo (subject no coincide): "${email.subject}"`);
+        continue;
+      }
       
+      console.log(`✅ Coincidencia encontrada! Procesando: ${email.id}`);
       const full = await resend.emails.get({ emailId: email.id });
       const html = full.data?.html || '';
-      if (!html) continue;
+      if (!html) {
+        console.log(`❌ Saltando (sin HTML): ${email.id}`);
+        continue;
+      }
 
       // Basic regex parsing for the structure
       const nameMatch = html.match(/Hola\s+<strong>([^<]+)<\/strong>/);
