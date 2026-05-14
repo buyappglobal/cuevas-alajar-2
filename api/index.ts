@@ -315,9 +315,12 @@ app.post(['/api/create-payment', '/create-payment'], async (req, res) => {
     // Pre-save to CRM
     const totalTickets = Number(tickets.adult || 0) + Number(tickets.reduced || 0) + Number(tickets.childFree || 0);
     
+    console.log("🔍 Checking DB initialization...");
     if (!db) {
       throw new Error("Base de datos no inicializada correctamente.");
     }
+    
+    console.log("🔍 Preparing to write to reservations collection...");
 
     await db.collection('reservations').doc(orderId).set({
       localizador: orderId,
@@ -334,13 +337,20 @@ app.post(['/api/create-payment', '/create-payment'], async (req, res) => {
       source: 'online',
       createdAt: new Date().toISOString()
     }, { merge: true });
+    
+    console.log("✅ DB: Document 'reservations' written.");
 
     const slotId = `${date}_${time}`;
     const slotRef = db.collection('slots').doc(slotId);
+    
+    console.log(`🔍 Checking slot: ${slotId}`);
     const slotSnap = await slotRef.get();
+    
     if (slotSnap.exists) {
+      console.log("🔍 Updating existing slot...");
       await slotRef.update({ bookedCount: FieldValue.increment(totalTickets) });
     } else {
+      console.log("🔍 Creating new slot...");
       await slotRef.set({ date, time, bookedCount: totalTickets }, { merge: true });
     }
     console.log(`✅ DB: Reserva ${orderId} pre-registrada y aforo bloqueado`);
