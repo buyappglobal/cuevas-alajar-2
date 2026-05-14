@@ -41,7 +41,8 @@ const getFirestoreConfig = () => {
   // Option B: Individual variables (Legacy/Fallback)
   const privateKey = process.env.FIREBASE_PRIVATE_KEY;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const projectId = process.env.FIREBASE_PROJECT_ID || firebaseConfig.projectId;
+  // Always prefer firebaseConfig.projectId to avoid environment variable overrides pointing to old projects
+  const projectId = firebaseConfig.projectId || process.env.FIREBASE_PROJECT_ID;
 
   if (privateKey && clientEmail) {
     console.log("🔐 Firebase Admin: Configurando con Service Account (Individual Vars)...");
@@ -350,8 +351,9 @@ app.post(['/api/create-payment', '/create-payment'], async (req, res) => {
       customerCity: customer.city || '',
       tickets,
       totalTickets,
-      amount,
+      totalPrice: amount,
       status: 'pending',
+      origin: 'online',
       source: 'online',
       createdAt: new Date().toISOString()
     }, { merge: true });
