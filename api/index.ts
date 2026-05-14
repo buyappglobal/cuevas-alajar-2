@@ -461,11 +461,20 @@ app.post(['/api/send-manual-email', '/send-manual-email'], async (req, res) => {
 
 app.post(['/api/resend/sync', '/resend-sync'], async (req, res) => {
   try {
+    console.log("🔄 Iniciando sincronización con Resend...");
     const list = await resend.emails.list({ limit: 30 });
+    
+    if (!list || !list.data) {
+      console.error("❌ Resend no devolvió datos válidos:", list);
+      return res.json({ success: true, count: 0, imported: [] });
+    }
+    
+    console.log(`📡 Resend devolvió ${list.data.length} correos.`);
+    
     const imported: any[] = [];
     
     for (const email of list.data) {
-      if (!email.subject.includes('Tu entrada confirmada - Peña de Arias Montano')) continue;
+      if (!email.subject || !email.subject.includes('Tu entrada confirmada - Peña de Arias Montano')) continue;
       
       const full = await resend.emails.get({ emailId: email.id });
       const html = full.data?.html || '';
@@ -493,7 +502,7 @@ app.post(['/api/resend/sync', '/resend-sync'], async (req, res) => {
             date: dateMatch ? dateMatch[1].split('/').reverse().join('-') : '',
             time: timeMatch ? timeMatch[1] : '',
             customerName: nameMatch ? nameMatch[1] : 'Desconocido',
-            customerEmail: email.to[0],
+            customerEmail: Array.isArray(email.to) ? email.to[0] : email.to,
             tickets: {
               adult: Number(adultMatch?.[1] || 0),
               reduced: Number(reducedMatch?.[1] || 0),
@@ -512,6 +521,7 @@ app.post(['/api/resend/sync', '/resend-sync'], async (req, res) => {
       }
     }
     
+    console.log(`✅ Sincronización finalizada. Importados: ${imported.length}`);
     res.json({ success: true, count: imported.length, imported });
   } catch (err: any) {
     console.error("❌ Sync Resend Error:", err);
