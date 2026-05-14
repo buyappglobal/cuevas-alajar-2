@@ -1079,6 +1079,30 @@ export default function AdminApp() {
           {/* Language Selector */}
           <div className="flex items-center gap-2">
             <button 
+              onClick={async () => {
+                  setIsRefreshing(true);
+                  try {
+                    const res = await fetch('/api/resend/sync', { method: 'POST' });
+                    const data = await res.json();
+                    alert(`${data.count} reservas sincronizadas desde Resend.`);
+                    fetchData();
+                  } catch(e) {
+                    alert("Error sync: " + e);
+                  } finally {
+                    setIsRefreshing(false);
+                  }
+              }}
+              className={`px-3 py-1.5 rounded-full border transition-all flex items-center gap-2 shadow-sm ${
+                  theme === 'dark' 
+                  ? 'bg-[#1A1A1A] border-[#C4A484]/20 text-[#C4A484] hover:bg-[#C4A484]/10' 
+                  : 'bg-white border-gray-200 text-[#C4A484] hover:bg-gray-50'
+              }`}
+              title="Sync Emails"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden lg:inline text-[10px] font-black uppercase tracking-widest">Sync</span>
+            </button>
+            <button 
               onClick={toggleLang}
               className={`px-3 py-1.5 rounded-full border transition-all flex items-center gap-2 shadow-sm ${
                 theme === 'dark' 
@@ -1274,24 +1298,6 @@ export default function AdminApp() {
               <FileText className="w-4 h-4" /> Importar CSV
             </button>
             <input type="file" ref={fileInputRef} onChange={handleImportCSV} className="hidden" accept=".csv"/>
-            <button 
-              onClick={async () => {
-                setIsRefreshing(true);
-                try {
-                  const res = await fetch('/api/resend/sync', { method: 'POST' });
-                  const data = await res.json();
-                  alert(`${data.count} reservas sincronizadas desde Resend.`);
-                  fetchData();
-                } catch(e) {
-                  alert("Error sync: " + e);
-                } finally {
-                  setIsRefreshing(false);
-                }
-              }}
-              className="bg-[#C4A484] text-[#0D0D0B] px-6 py-2.5 font-bold uppercase tracking-wider text-xs flex items-center gap-2 hover:bg-[#E5E2D9] transition-all shadow-lg"
-            >
-              <RefreshCw className="w-4 h-4" /> Sync Emails
-            </button>
           </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           {slots.map(slot => (

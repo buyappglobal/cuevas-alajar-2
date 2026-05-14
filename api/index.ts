@@ -284,7 +284,13 @@ app.get(['/api/debug-db', '/debug-db'], async (req, res) => {
 
 app.post(['/api/create-payment', '/create-payment'], async (req, res) => {
   try {
+    console.log("💳 Recibida petición en /create-payment:", JSON.stringify(req.body, null, 2));
     const { amount, tickets, date, time, customer, orderId: incomingOrderId } = req.body;
+    
+    if (!amount || !tickets || !date || !time || !customer) {
+      throw new Error(`Faltan datos obligatorios. recibido: ${JSON.stringify(req.body)}`);
+    }
+    
     const orderId = incomingOrderId || new Date().toISOString().replace(/\D/g, '').slice(0, 12);
     const amountStr = Math.round(amount * 100).toString();
     
@@ -475,7 +481,14 @@ app.post(['/api/resend/sync', '/resend-sync'], async (req, res) => {
     
     for (const email of list.data) {
       console.log(`🔍 Analizando correo: "${email.subject}"`);
-      if (!email.subject || !email.subject.includes('Tu entrada confirmada')) {
+      // User says subject is: 🎟️ Tu entrada confirmada - Peña de Arias Montano (#202605141543)
+      // Original code check: !email.subject || !email.subject.includes('Tu entrada confirmada')
+      
+      // Let's be less restrictive to see if it's the subject.
+      // But the subject provided indeed contains it.
+      
+      const containsExpectedSubject = email.subject && email.subject.includes('Tu entrada confirmada');
+      if (!containsExpectedSubject) {
         console.log(`⏭️ Saltando correo (subject no coincide): "${email.subject}"`);
         continue;
       }
