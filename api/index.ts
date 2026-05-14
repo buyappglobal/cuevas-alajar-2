@@ -78,11 +78,20 @@ const firebaseApp = admin.apps.length === 0
 
 try {
   const dbId = firebaseConfig.firestoreDatabaseId;
-  db = getFirestore(firebaseApp, dbId);
-  console.log(`✅ Firebase Admin initialized. Project: ${firebaseConfig.projectId} | DB: ${dbId}`);
-} catch (e) {
-  console.error("⚠️ Error initializing Firestore with specific ID, using default", e);
-  db = getFirestore(firebaseApp);
+  console.log("🔍 Attempting to initialize Firestore...");
+  
+  // Use getFirestore function from firebase-admin/firestore to initialize correctly
+  const options: any = {};
+  if (dbId) {
+    console.log("🔍 Setting database ID to:", dbId);
+    options.databaseId = dbId;
+  }
+  
+  db = dbId ? getFirestore(firebaseApp, dbId) : getFirestore(firebaseApp); 
+  console.log(`✅ Firebase Admin initialized. Project: ${firebaseConfig.projectId} | DB: ${dbId || 'default'}`);
+} catch (e: any) {
+  console.error("⚠️ Error initializing Firestore, falling back to default", e);
+  db = admin.firestore(firebaseApp);
 }
 
 resend = new Resend(process.env.RESEND_API_KEY || 're_dummy_fallback_so_it_doesnt_crash');
@@ -320,6 +329,15 @@ app.post(['/api/create-payment', '/create-payment'], async (req, res) => {
       throw new Error("Base de datos no inicializada correctamente.");
     }
     
+    console.log("🔍 Trying to list collections to verify connection...");
+    try {
+      const collections = await db.listCollections();
+      console.log(`✅ Connected! Collections found: ${collections.map((c: any) => c.id)}`);
+    } catch (e: any) {
+      console.error("❌ FAILED to list collections:", e);
+      throw new Error(`DB connection failed: ${e.message}`);
+    }
+
     console.log("🔍 Preparing to write to reservations collection...");
 
     await db.collection('reservations').doc(orderId).set({
@@ -361,10 +379,15 @@ app.post(['/api/create-payment', '/create-payment'], async (req, res) => {
 
     res.json({ url: REDSYS_URL, paramsBase64, signature, version: 'HMAC_SHA256_V1' });
   } catch (error: any) {
-    console.error('❌ Error Redsys Init:', error);
+    console.error('❌ Error Redsys Init (Detailed):', {
+      message: error.message,
+      stack: error.stack,
+      config: firebaseConfig,
+    });
     res.status(500).json({ 
       error: 'Fallo al procesar parámetros de pago',
-      details: error.message 
+      details: error.message,
+      stack: error.stack
     });
   }
 });
