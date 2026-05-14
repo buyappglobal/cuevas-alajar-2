@@ -1,0 +1,71 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // --- Helper functions ---
+    function isSignedIn() { return request.auth != null; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    // --- Validation Blueprint ---
+    function isValidReservation(data) {
+      return 
+        data.keys().hasAll(['date', 'time', 'source', 'status', 'totalTickets', 'createdAt', 'customerName', 'customerEmail', 'tickets', 'localizador']) &&
+        data.date is string && 
+        data.time is string && 
+        data.customerName is string && 
+        data.customerEmail is string &&
+        data.totalTickets is number && data.totalTickets > 0 && data.totalTickets <= 20 &&
+        data.source in ['online', 'manual'] &&
+        data.status in ['pending', 'paid', 'confirmed', 'cancelled'];
+    }
+
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      // Allow bootstrapping for authorized emails
+      allow write: if isSignedIn() && (
+        request.auth.token.email.matches('(?i)holasolonet@gmail\\.com') || 
+        request.auth.token.email.matches('(?i)caballerovazquezrafael@gmail\\.com') || 
+        request.auth.token.email.matches('(?i)taquilla@cuevas\\.com') ||
+        request.auth.token.email.matches('(?i)admin@cuevasdealajar\\.com') ||
+        request.auth.token.email.matches('(?i)cuevasdealajar@gmail\\.com')
+      );
+    }
+
+    match /reservations/{reservationId} {
+      allow read: if isAdmin();
+      
+      // Allow public to create a reservation if it's correct
+      allow create: if isValidId(reservationId) && isValidReservation(incoming()) && 
+                       incoming().createdAt == request.time;
+      
+      allow update: if isAdmin() && isValidReservation(incoming());
+    }
+    
+    match /slots/{slotId} {
+      // Public can read capacities
+      allow read: if true;
+      
+      // Admins can do anything
+      allow update, delete: if isAdmin();
+      
+      // Only allow public to create if it doesn't exist
+      allow create: if isAdmin();
+      
+      // Public can atomically increment bookedCount IF within limit
+      allow update: if 
+        incoming().diff(existing()).affectedKeys().hasOnly(['bookedCount']) &&
+        incoming().bookedCount <= 20;
+    }
+  }
+}
