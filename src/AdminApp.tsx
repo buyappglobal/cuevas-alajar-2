@@ -698,6 +698,7 @@ export default function AdminApp() {
         // Verify admin
         try {
           const authorizedEmails = [
+            'cinside.info@gmail.com',
             'holasolonet@gmail.com', 
             'caballerovazquezrafael@gmail.com', 
             'taquilla@cuevas.com', 

@@ -9,7 +9,16 @@ service cloud.firestore {
     function existing() { return resource.data; }
     
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email.matches('(?i)cinside\\.info@gmail\\.com') ||
+        request.auth.token.email.matches('(?i)holasolonet@gmail\\.com') ||
+        request.auth.token.email.matches('(?i)caballerovazquezrafael@gmail\\.com') ||
+        request.auth.token.email.matches('(?i)taquilla@cuevas\\.com') ||
+        request.auth.token.email.matches('(?i)taquilla@cuevasdealajar\\.com') ||
+        request.auth.token.email.matches('(?i)admin@cuevasdealajar\\.com') ||
+        request.auth.token.email.matches('(?i)cuevasdealajar@gmail\\.com')
+      );
     }
 
     // --- Validation Blueprint ---
@@ -34,6 +43,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       // Allow bootstrapping for authorized emails
       allow write: if isSignedIn() && (
+        request.auth.token.email.matches('(?i)cinside\\.info@gmail\\.com') ||
         request.auth.token.email.matches('(?i)holasolonet@gmail\\.com') ||
         request.auth.token.email.matches('(?i)caballerovazquezrafael@gmail\\.com') ||
         request.auth.token.email.matches('(?i)taquilla@cuevas\\.com') ||
