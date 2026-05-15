@@ -462,6 +462,69 @@ export default function AdminApp() {
     tickets: { adult: 0, reduced: 0, childFree: 0 }
   });
 
+  const [isManualImportOpen, setIsManualImportOpen] = useState(false);
+  const [manualImportText, setManualImportText] = useState('');
+
+  const parseAndImportText = async () => {
+    try {
+      const text = manualImportText;
+      if (!text) {
+        alert("Pega texto del email primero.");
+        return;
+      }
+      
+      const locMatch = text.match(/#([a-zA-Z0-9_]{8,})/);
+      const localizador = locMatch ? locMatch[1] : `MAN-${Date.now()}`;
+      
+      const nameMatch = text.match(/Hola\s+([^,\n<]+)/i) || text.match(/Nombre:\s*([^\n<]+)/i);
+      const dateMatch = text.match(/Fecha:\s*([0-9/]+)/i);
+      const timeMatch = text.match(/Hora:\s*([0-9:]+)/i);
+      const adultMatch = text.match(/Adultos:\s*(\d+)/i) || text.match(/Adulto:\s*(\d+)/i);
+      const reducedMatch = text.match(/Reducidas:\s*(\d+)/i) || text.match(/Reducida:\s*(\d+)/i);
+      const childFreeMatch = text.match(/Infantiles.*:\s*(\d+)/i) || text.match(/Infantil.*:\s*(\d+)/i);
+      const amountMatch = text.match(/Total Pagado:\s*([\d.,]+)/i);
+
+      let parsedDate = '';
+      if (dateMatch && dateMatch[1]) {
+        const dp = dateMatch[1].trim().split('/');
+        if(dp.length === 3) {
+          parsedDate = dp.reverse().join('-');
+        } else {
+          parsedDate = dateMatch[1].trim();
+        }
+      }
+
+      const tickets = {
+        adult: Number(adultMatch?.[1] || 0),
+        reduced: Number(reducedMatch?.[1] || 0),
+        childFree: Number(childFreeMatch?.[1] || 0)
+      };
+
+      const resData = {
+        localizador,
+        date: parsedDate,
+        time: timeMatch ? timeMatch[1].trim() : '',
+        customerName: nameMatch ? nameMatch[1].trim() : 'Importado Manual',
+        customerEmail: 'importado@manual.com',
+        tickets,
+        totalTickets: tickets.adult + tickets.reduced + tickets.childFree,
+        totalPrice: parseFloat((amountMatch?.[1] || '0').replace(',', '.')),
+        status: 'paid',
+        origin: 'import_manual',
+        source: 'online',
+        isImported: true,
+        createdAt: new Date().toISOString()
+      };
+
+      await setDoc(doc(db, 'reservations', localizador), resData, { merge: true });
+      alert(`Reserva ${localizador} importada con éxito`);
+      setIsManualImportOpen(false);
+      setManualImportText('');
+    } catch(err: any) {
+      alert('Error importando: ' + err.message);
+    }
+  };
+
   // Fetch city for manual sale
   useEffect(() => {
     if (manualSaleForm.customerPostalCode.length === 5) {
@@ -1307,6 +1370,12 @@ export default function AdminApp() {
               <Plus className="w-4 h-4" /> Venta Manual
             </button>
             <button 
+              onClick={() => setIsManualImportOpen(true)}
+              className="bg-[#C4A484] text-[#0D0D0B] px-6 py-2.5 font-bold uppercase tracking-wider text-xs flex items-center gap-2 hover:bg-[#E5E2D9] transition-all shadow-lg"
+            >
+              <FileText className="w-4 h-4" /> Importar Texto
+            </button>
+            <button 
               onClick={() => fileInputRef.current?.click()}
               className="bg-[#C4A484] text-[#0D0D0B] px-6 py-2.5 font-bold uppercase tracking-wider text-xs flex items-center gap-2 hover:bg-[#E5E2D9] transition-all shadow-lg"
             >
@@ -1673,6 +1742,70 @@ export default function AdminApp() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Import Manual Modal */}
+      {isManualImportOpen && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={`w-full max-w-lg relative flex flex-col max-h-[90vh] border transition-colors shadow-2xl ${
+              theme === 'dark' ? 'bg-[#151515] border-[#E5E2D9]/10' : 'bg-white border-gray-200'
+            }`}
+          >
+            <div className={`p-6 border-b flex justify-between items-center transition-colors ${theme === 'dark' ? 'border-[#E5E2D9]/10' : 'border-gray-200'}`}>
+              <div>
+                <h3 className={`font-serif text-xl mb-1 transition-colors ${theme === 'dark' ? 'text-[#E5E2D9]' : 'text-gray-900'}`}>Importar desde Texto</h3>
+                <p className={`text-[10px] uppercase font-bold tracking-widest transition-colors ${theme === 'dark' ? 'text-[#E5E2D9]/40' : 'text-gray-400'}`}>
+                  Pega el contenido del email 
+                </p>
+              </div>
+              <button 
+                title="Cerrar modal"
+                onClick={() => setIsManualImportOpen(false)}
+                className={`p-2 hover:rotate-90 transition-all ${theme === 'dark' ? 'text-[#E5E2D9]/40 hover:text-[#E5E2D9]' : 'text-gray-400 hover:text-gray-900'}`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              <div className="space-y-4">
+                <div>
+                   <label className={`block text-[10px] uppercase tracking-widest font-bold mb-2 transition-colors ${theme === 'dark' ? 'text-[#E5E2D9]/60' : 'text-gray-600'}`}>
+                     Texto de la Reserva
+                   </label>
+                   <textarea
+                     className={`w-full border p-3 text-xs focus:border-[#C4A484]/50 focus:outline-none transition-colors min-h-[300px] font-mono ${
+                       theme === 'dark' ? 'bg-[#0D0D0B] border-[#E5E2D9]/20 text-[#E5E2D9]' : 'bg-white border-gray-300 text-gray-900'
+                     }`}
+                     value={manualImportText}
+                     onChange={e => setManualImportText(e.target.value)}
+                     placeholder="Hola Antonio... Fecha: 15/05/2026... Localizador: #..."
+                   />
+                </div>
+              </div>
+            </div>
+
+            <div className={`p-6 border-t flex gap-4 transition-colors ${theme === 'dark' ? 'border-[#E5E2D9]/10 bg-[#0D0D0B]/50' : 'border-gray-200 bg-gray-50'}`}>
+              <button 
+                onClick={() => setIsManualImportOpen(false)}
+                className={`flex-1 py-3 border font-bold uppercase tracking-widest text-[10px] transition-all cursor-pointer hover:underline ${
+                  theme === 'dark' ? 'border-[#E5E2D9]/20 text-[#E5E2D9]/60 hover:text-[#E5E2D9]' : 'border-gray-300 text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={parseAndImportText}
+                className="flex-1 bg-[#C4A484] text-[#0D0D0B] py-3 font-bold uppercase tracking-widest text-[10px] hover:bg-[#E5E2D9] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+              >
+                <FileText className="w-4 h-4" /> Importar Reserva
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
 
