@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { db, auth, loginWithGoogle, loginWithEmail, logout } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, query, getDocs, doc, getDoc, setDoc, updateDoc, increment, where, onSnapshot, deleteDoc } from 'firebase/firestore';
-import { Calendar, Clock, Ticket, Users, FileText, CheckCircle, Plus, LogOut, Mountain, X, RefreshCw, Info, Ban, AlertCircle, Copy, Mail, Sun, Moon, Globe, Maximize, Minimize, BarChart3, Download, PieChart as PieChartIcon, Eye, EyeOff } from 'lucide-react';
+import { Calendar, Clock, Ticket, Users, FileText, CheckCircle, Plus, LogOut, Mountain, X, RefreshCw, Loader2, Info, Ban, AlertCircle, Copy, Mail, Sun, Moon, Globe, Maximize, Minimize, BarChart3, Download, PieChart as PieChartIcon, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import { translations } from './translations';
@@ -99,6 +99,8 @@ export default function AdminApp() {
   const [emailInput, setEmailInput] = useState('admin');
   const [passwordInput, setPasswordInput] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [loginError, setLoginError] = useState('');
 
   // Tooltip helper component
   const Tooltip = ({ text }: { text: string }) => (
@@ -782,19 +784,51 @@ export default function AdminApp() {
   );
 
 
+  const handleGoogleSubmit = async () => {
+    setLoginError('');
+    setIsLoggingIn(true);
+    try {
+      await loginWithGoogle();
+    } catch(err: any) {
+      if (err.code === 'auth/popup-closed-by-user') {
+        setLoginError('Has cerrado la ventana antes de completar el inicio de sesión.');
+      } else {
+        setLoginError("Error iniciando sesión con Google. Inténtalo de nuevo.");
+      }
+    } finally {
+      setIsLoggingIn(false);
+    }
+  };
+
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoginError('');
+    setIsLoggingIn(true);
     
     // Bypass for user who doesn't want to use Google or Firebase Auth Email provider
     if (emailInput === 'admin' && passwordInput === 'Alajar2024!') {
       setIsBypass(true);
+      setIsLoggingIn(false);
       return;
     }
 
     try {
       await loginWithEmail(emailInput, passwordInput);
     } catch(err: any) {
-      alert("Error iniciando sesión. Comprueba que la contraseña es correcta y que has habilitado el proveedor de 'Correo y Contraseña' en Firebase Authentication.");
+      // Firebase throws specific errors for wrong password or email not found
+      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-email') {
+        setLoginError('El usuario o email no está registrado.');
+      } else if (err.code === 'auth/wrong-password') {
+        setLoginError('La contraseña es incorrecta.');
+      } else if (err.code === 'auth/invalid-credential') {
+        setLoginError('Credenciales inválidas. Compruebe el email y la contraseña.');
+      } else if (err.code === 'auth/too-many-requests') {
+        setLoginError('Demasiados intentos fallidos. Inténtelo más tarde.');
+      } else {
+        setLoginError("Error iniciando sesión. Comprueba que tus datos son correctos.");
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -1043,6 +1077,7 @@ export default function AdminApp() {
                 className={`w-full border p-3 focus:outline-none focus:border-[#C4A484] transition-colors ${
                   theme === 'dark' ? 'bg-[#0D0D0B] border-[#E5E2D9]/20 text-[#E5E2D9]' : 'bg-gray-50 border-gray-200 text-gray-900'
                 }`}
+                disabled={isLoggingIn}
               />
             </div>
             <div>
@@ -1055,25 +1090,47 @@ export default function AdminApp() {
                   className={`w-full border p-3 focus:outline-none focus:border-[#C4A484] transition-colors pr-10 ${
                     theme === 'dark' ? 'bg-[#0D0D0B] border-[#E5E2D9]/20 text-[#E5E2D9]' : 'bg-gray-50 border-gray-200 text-gray-900'
                   }`}
+                  disabled={isLoggingIn}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-3 text-gray-400 hover:text-[#C4A484]"
+                  disabled={isLoggingIn}
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
+            
+            {loginError && (
+              <div className={`p-3 text-sm flex items-start gap-2 border ${
+                theme === 'dark' 
+                  ? 'bg-red-900/20 text-red-400 border-red-900/50' 
+                  : 'bg-red-50 text-red-600 border-red-200'
+              }`}>
+                <AlertCircle className="w-5 h-5 shrink-0" />
+                <p>{loginError}</p>
+              </div>
+            )}
+            
             <button 
               type="submit"
-              className={`w-full transition-all py-3 font-bold uppercase tracking-widest text-xs border ${
+              disabled={isLoggingIn}
+              className={`w-full transition-all py-3 font-bold uppercase tracking-widest text-xs border flex items-center justify-center gap-2 ${
                 theme === 'dark' 
                   ? 'bg-[#E5E2D9]/5 hover:bg-[#E5E2D9]/10 border-[#E5E2D9]/20 text-[#E5E2D9]' 
                   : 'bg-[#C4A484] hover:bg-[#A68B6E] text-white border-[#C4A484] shadow-md'
-              }`}
+              } ${isLoggingIn ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              Entrar
+              {isLoggingIn ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-[#C4A484]" />
+                  Conectando...
+                </>
+              ) : (
+                'Entrar'
+              )}
             </button>
           </form>
         </div>
@@ -1081,14 +1138,23 @@ export default function AdminApp() {
         <div className="flex flex-col items-center gap-4">
           <span className={`text-[10px] uppercase tracking-widest font-bold transition-colors ${theme === 'dark' ? 'text-[#E5E2D9]/30' : 'text-gray-400'}`}>O también</span>
           <button 
-            onClick={loginWithGoogle}
-            className={`px-8 py-3 font-bold uppercase tracking-widest text-xs transition-all shadow-lg ${
+            type="button"
+            disabled={isLoggingIn}
+            onClick={handleGoogleSubmit}
+            className={`px-8 py-3 font-bold uppercase tracking-widest text-xs transition-all shadow-lg flex items-center justify-center gap-2 ${
               theme === 'dark' 
                 ? 'bg-[#C4A484] text-[#0D0D0B] hover:bg-[#b09376]' 
                 : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-            }`}
+            } ${isLoggingIn ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            Acceder con Google
+            {isLoggingIn ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Validando...
+              </>
+            ) : (
+              'Acceder con Google'
+            )}
           </button>
         </div>
       </div>
