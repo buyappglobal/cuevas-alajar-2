@@ -1090,6 +1090,15 @@ export default function AdminApp() {
                   try {
                     const res = await fetch('/api/resend/sync', { method: 'POST' });
                     const data = await res.json();
+                    
+                    if (!res.ok) {
+                        alert(`Error: ${data.error || 'No se pudo sincronizar'}`);
+                        return;
+                    }
+
+                    if (data.logs) {
+                        console.log("Subjects Scanned:", data.logs);
+                    }
                     alert(`${data.count} reservas sincronizadas desde Resend.`);
                     fetchData();
                   } catch(e) {

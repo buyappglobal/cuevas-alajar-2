@@ -161,7 +161,7 @@ async function sendConfirmationEmail(orderId: string, manual: boolean = false) {
       ${(resData.tickets.adult || 0) > 0 ? `<p><strong>Adultos:</strong> ${resData.tickets.adult}</p>` : ''}
       ${(resData.tickets.reduced || 0) > 0 ? `<p><strong>Reducidas:</strong> ${resData.tickets.reduced}</p>` : ''}
       ${(resData.tickets.childFree || 0) > 0 ? `<p><strong>Infantiles (Gratis):</strong> ${resData.tickets.childFree}</p>` : ''}
-      <p style="font-size: 18px; font-weight: bold; margin-top: 15px;">Total Pagado: ${resData.amount || 0}€</p>
+      <p style="font-size: 18px; font-weight: bold; margin-top: 15px;">Total Pagado: ${resData.totalPrice || resData.amount || 0}€</p>
     </div>
   `;
 
@@ -505,16 +505,26 @@ app.post(['/api/resend/sync', '/resend-sync'], async (req, res) => {
     console.log("🔄 Iniciando sincronización con Resend...");
     const list = await resend.emails.list({ limit: 100 });
     
+    if (list.error) {
+      console.error("❌ Error de Resend:", list.error);
+      if (list.error.name === 'restricted_api_key' || list.error.message.includes('restricted')) {
+        return res.status(401).json({ error: 'La API Key de Resend está limitada solo a envio. Por favor, crea una nueva API Key en Resend seleccionando "Full Access" para poder leer los correos antiguos.' });
+      }
+      return res.status(500).json({ error: list.error.message || 'Error desconocido de Resend' });
+    }
+
     if (!list || !list.data) {
       console.error("❌ Resend no devolvió datos válidos:", list);
-      return res.json({ success: true, count: 0, imported: [] });
+      return res.json({ success: true, count: 0, imported: [], logs: ['No data returned from Resend'] });
     }
     
     console.log(`📡 Resend devolvió ${list.data.length} correos.`);
     
     const imported: any[] = [];
+    const subjectsScanned: string[] = [];
     
     for (const email of list.data) {
+      subjectsScanned.push(email.subject || 'No subject');
       console.log(`🔍 Analizando correo: "${email.subject}"`);
       
       const containsExpectedSubject = email.subject && email.subject.includes('Tu entrada confirmada');
@@ -634,7 +644,7 @@ app.post(['/api/resend/sync', '/resend-sync'], async (req, res) => {
     }
     
     console.log(`✅ Sincronización finalizada. Importados: ${imported.length}`);
-    res.json({ success: true, count: imported.length, imported });
+    res.json({ success: true, count: imported.length, imported, logs: subjectsScanned });
   } catch (err: any) {
     console.error("❌ Sync Resend Error:", err);
     res.status(500).json({ error: err.message });
