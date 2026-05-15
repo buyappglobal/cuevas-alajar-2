@@ -513,17 +513,19 @@ app.post(['/api/resend/sync', '/resend-sync'], async (req, res) => {
       return res.status(500).json({ error: list.error.message || 'Error desconocido de Resend' });
     }
 
-    if (!list || !list.data) {
-      console.error("❌ Resend no devolvió datos válidos:", list);
-      return res.json({ success: true, count: 0, imported: [], logs: ['No data returned from Resend'] });
+    const emailsArray = Array.isArray(list.data) ? list.data : (list.data?.data || []);
+    
+    if (emailsArray.length === 0) {
+      console.error("❌ Resend no devolvió correos o la lista está vacía:", list);
+      return res.json({ success: true, count: 0, imported: [], logs: ['No emails returned from Resend'] });
     }
     
-    console.log(`📡 Resend devolvió ${list.data.length} correos.`);
+    console.log(`📡 Resend devolvió ${emailsArray.length} correos.`);
     
     const imported: any[] = [];
     const subjectsScanned: string[] = [];
     
-    for (const email of list.data) {
+    for (const email of emailsArray) {
       subjectsScanned.push(email.subject || 'No subject');
       console.log(`🔍 Analizando correo: "${email.subject}"`);
       

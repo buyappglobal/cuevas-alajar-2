@@ -8,11 +8,13 @@ async function test() {
   try {
      console.log("Using Token:", process.env.RESEND_API_KEY ? "YES (Env)" : "NO");
      const result = await resend.emails.list({ limit: 100 });
+     console.log("Result object:", result);
      console.log("Result error:", JSON.stringify(result.error, null, 2));
-     console.log("Total emails:", result.data ? result.data.length : 0);
-     if (result.data) {
+     const emailsArray = Array.isArray(result.data) ? result.data : (result.data?.data || []);
+     console.log("Total emails:", emailsArray.length);
+     if (emailsArray.length > 0) {
         let count = 0;
-        for (const e of result.data) {
+        for (const e of emailsArray) {
             if (e.subject?.includes('entrada confirmada')) {
                 count++;
                 console.log("Match:", e.subject, e.created_at);
