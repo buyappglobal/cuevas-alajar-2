@@ -503,7 +503,7 @@ app.post(['/api/send-manual-email', '/send-manual-email'], async (req, res) => {
 app.post(['/api/resend/sync', '/resend-sync'], async (req, res) => {
   try {
     console.log("🔄 Iniciando sincronización con Resend...");
-    const list = await resend.emails.list({ limit: 30 });
+    const list = await resend.emails.list({ limit: 100 });
     
     if (!list || !list.data) {
       console.error("❌ Resend no devolvió datos válidos:", list);
@@ -516,11 +516,6 @@ app.post(['/api/resend/sync', '/resend-sync'], async (req, res) => {
     
     for (const email of list.data) {
       console.log(`🔍 Analizando correo: "${email.subject}"`);
-      // User says subject is: 🎟️ Tu entrada confirmada - Peña de Arias Montano (#202605141543)
-      // Original code check: !email.subject || !email.subject.includes('Tu entrada confirmada')
-      
-      // Let's be less restrictive to see if it's the subject.
-      // But the subject provided indeed contains it.
       
       const containsExpectedSubject = email.subject && email.subject.includes('Tu entrada confirmada');
       if (!containsExpectedSubject) {
@@ -530,34 +525,95 @@ app.post(['/api/resend/sync', '/resend-sync'], async (req, res) => {
       
       console.log(`✅ Coincidencia encontrada! Procesando: ${email.id}`);
       const full = await resend.emails.get({ emailId: email.id });
-      const html = full.data?.html || '';
+      let localizador = null;
+      
+      let html = full.data?.html || '';
+      let text = full.data?.text || '';
+      
+      const subjectDocMatch = email.subject?.match(/#([a-zA-Z0-9_]+)/);
+      if (subjectDocMatch) {
+        localizador = subjectDocMatch[1];
+      }
+
+      if (!html && text) {
+        html = text;
+      }
+
       if (!html) {
-        console.log(`❌ Saltando (sin HTML): ${email.id}`);
+        console.log(`⚠️ Sin contenido HTML/Text: ${email.id}. Intentando conciliar solo por el Asunto...`);
+        if (localizador) {
+          const ref = db.collection('reservations').doc(localizador);
+          const snap = await ref.get();
+          if (snap.exists && snap.data()?.status === 'pending') {
+            await ref.update({ status: 'paid', syncedFromResend: true });
+            imported.push(localizador);
+            console.log(`✅ Conciliada por ID: ${localizador}`);
+          } else if (!snap.exists) {
+            console.log(`✅ Creando reserva vacía desde ID y Asunto por carecer de HTML: ${localizador}`);
+            const resData = {
+              localizador,
+              date: '',
+              time: '',
+              customerName: 'Recuperado (Sin datos)',
+              customerEmail: Array.isArray(email.to) ? email.to[0] : email.to,
+              tickets: { adult: 0, reduced: 0, childFree: 0 },
+              totalTickets: 0,
+              totalPrice: 0,
+              createdAt: email.created_at || new Date().toISOString(),
+              status: 'paid',
+              source: 'online',
+              isImported: true,
+              needsManualReview: true
+            };
+            await ref.set(resData);
+            imported.push(localizador);
+          }
+        }
         continue;
       }
 
       // Basic regex parsing for the structure
-      const nameMatch = html.match(/Hola\s+<strong>([^<]+)<\/strong>/);
-      const dateMatch = html.match(/<strong>Fecha:<\/strong>\s+([^<]+)<\/p>/);
-      const timeMatch = html.match(/<strong>Hora:<\/strong>\s+([^<]+)h<\/p>/);
-      const locMatch = html.match(/<strong>Localizador:<\/strong>[^\d]+#([^\s<]+)/);
-      const adultMatch = html.match(/<strong>Adultos:<\/strong>\s+(\d+)/);
-      const reducedMatch = html.match(/<strong>Reducidas:<\/strong>\s+(\d+)/);
-      const childFreeMatch = html.match(/<strong>Infantiles \(Gratis\):<\/strong>\s+(\d+)/);
-      const amountMatch = html.match(/Total Pagado:\s+(\d+)€/);
+      const nameMatch = html.match(/Hola\s+(?:<strong>)?([^<]+)(?:<\/strong>)?/i);
+      const dateMatch = html.match(/(?:<strong>)?Fecha:[^<0-9]*(?:<\/strong>)?\s*([^<]+)<\/p>/i) || html.match(/Fecha:\s*([^<]+)/i);
+      const timeMatch = html.match(/(?:<strong>)?Hora:[^<0-9]*(?:<\/strong>)?\s*([^<]+)h/i) || html.match(/Hora:\s*([^<]+)/i);
+      
+      const locMatch = html.match(/(?:<strong>)?Localizador:(?:<\/strong>)?.*?#([^\s<]+)/i);
+      if (!localizador) {
+        localizador = locMatch ? locMatch[1] : null;
+      }
+      
+      const adultMatch = html.match(/(?:<strong>)?Adultos:(?:<\/strong>)?[^0-9]*?(\d+)/i);
+      const reducedMatch = html.match(/(?:<strong>)?Reducidas:(?:<\/strong>)?[^0-9]*?(\d+)/i);
+      const childFreeMatch = html.match(/(?:<strong>)?Infantiles \(Gratis\):(?:<\/strong>)?[^0-9]*?(\d+)/i);
+      const amountMatch = html.match(/Total Pagado:\s*([\d.,]+)€/i);
 
-      if (locMatch && locMatch[1]) {
-        const localizador = locMatch[1];
-        const docId = `HIST-${localizador}`;
-        const docRef = db.collection('reservations').doc(docId);
-        const exists = (await docRef.get()).exists;
+      if (localizador) {
+        const docRef = db.collection('reservations').doc(localizador);
+        const docSnap = await docRef.get();
         
-        if (!exists) {
+        if (docSnap.exists) {
+          const existingData = docSnap.data();
+          if (existingData?.status === 'pending') {
+            await docRef.update({ status: 'paid', syncedFromResend: true });
+            imported.push(localizador);
+            console.log(`✅ Conciliada (ya existía como pending): ${localizador}`);
+          } else {
+             console.log(`⏭️ Ya estaba processada correctamente: ${localizador}`);
+          }
+        } else {
+          console.log(`✅ Creando nueva reserva desde email: ${localizador}`);
+          
+          let parsedDate = '';
+          if (dateMatch && dateMatch[1]) {
+            const dp = dateMatch[1].trim().split('/');
+            parsedDate = dp.length === 3 ? dp.reverse().join('-') : dateMatch[1].trim();
+          }
+
           const resData = {
             localizador,
-            date: dateMatch ? dateMatch[1].split('/').reverse().join('-') : '',
-            time: timeMatch ? timeMatch[1] : '',
-            customerName: nameMatch ? nameMatch[1] : 'Desconocido',
+            date: parsedDate,
+            time: timeMatch ? timeMatch[1].trim() : '',
+            customerName: nameMatch ? nameMatch[1].trim() : 'Desconocido',
             customerEmail: Array.isArray(email.to) ? email.to[0] : email.to,
             tickets: {
               adult: Number(adultMatch?.[1] || 0),
@@ -565,8 +621,8 @@ app.post(['/api/resend/sync', '/resend-sync'], async (req, res) => {
               childFree: Number(childFreeMatch?.[1] || 0),
             },
             totalTickets: (Number(adultMatch?.[1] || 0) + Number(reducedMatch?.[1] || 0) + Number(childFreeMatch?.[1] || 0)),
-            totalPrice: Number(amountMatch?.[1] || 0),
-            createdAt: new Date().toISOString(),
+            totalPrice: parseFloat((amountMatch?.[1] || '0').replace(',', '.')),
+            createdAt: email.created_at || new Date().toISOString(),
             status: 'paid',
             source: 'online',
             isImported: true
