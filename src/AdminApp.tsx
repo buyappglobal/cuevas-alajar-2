@@ -509,7 +509,7 @@ export default function AdminApp() {
         tickets,
         totalTickets: tickets.adult + tickets.reduced + tickets.childFree,
         totalPrice: parseFloat((amountMatch?.[1] || '0').replace(',', '.')),
-        status: 'paid',
+        status: 'confirmed',
         origin: 'import_manual',
         source: 'online',
         isImported: true,
