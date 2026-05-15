@@ -19,7 +19,8 @@ let firebaseConfig: any = {};
 try {
   firebaseConfig = JSON.parse(readFileSync(firebaseConfigPath, 'utf8'));
 } catch (e) {
-  console.error("❌ Could not read firebase-applet-config.json", e);
+  // Silent fallback for Vercel where the file is un-tracked
+  console.log("ℹ️ Archivo de configuración de Firebase no encontrado, cambiando a variables de entorno.");
 }
 
 const getFirestoreConfig = () => {
@@ -42,7 +43,7 @@ const getFirestoreConfig = () => {
   const privateKey = process.env.FIREBASE_PRIVATE_KEY;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   // Always prefer firebaseConfig.projectId to avoid environment variable overrides pointing to old projects
-  const projectId = firebaseConfig.projectId || process.env.FIREBASE_PROJECT_ID;
+  const projectId = firebaseConfig.projectId || process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID;
 
   if (privateKey && clientEmail) {
     console.log("🔐 Firebase Admin: Configurando con Service Account (Individual Vars)...");
