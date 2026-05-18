@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { IS_SUMMER_SEASON } from './App';
 
 export default function AdminApp() {
   const [user, setUser] = useState<User | null>(null);
@@ -338,7 +339,7 @@ export default function AdminApp() {
     : filteredReservations.slice(0, itemsPerPage);
 
   // Capacidades actuales basadas EN LA FECHA DE BÚSQUEDA (dateFilter)
-  const slots = ['11:00', '12:30', '16:00'];
+  const slots = IS_SUMMER_SEASON ? ['11:00', '12:30'] : ['11:00', '12:30', '16:00'];
   const capacities = slots.reduce((acc, slot) => {
     const slotRes = allReservations.filter(r => 
       r.date === dateFilter && r.time === slot && (r.status === 'confirmed' || r.status === 'paid')
@@ -1920,7 +1921,7 @@ export default function AdminApp() {
                     >
                       <option value="11:00">11:00</option>
                       <option value="12:30">12:30</option>
-                      <option value="16:00">16:00</option>
+                      {!IS_SUMMER_SEASON && <option value="16:00">16:00</option>}
                     </select>
                   </div>
                 </div>

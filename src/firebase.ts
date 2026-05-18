@@ -21,7 +21,7 @@ export const loginWithEmail = async (email: string, pass: string) => {
   try {
     const result = await signInWithEmailAndPassword(auth, email, pass);
     const authorizedBootstrappers = ['cinside.info@gmail.com', 'holasolonet@gmail.com', 'caballerovazquezrafael@gmail.com', 'taquilla@cuevas.com', 'taquilla@cuevasdealajar.com', 'cuevasdealajar@gmail.com', 'admin@cuevasdealajar.com'];
-    if (result.user.email && authorizedBootstrappers.includes(result.user.email)) {
+    if (result.user.email && authorizedBootstrappers.some(e => e.toLowerCase() === result.user.email!.toLowerCase())) {
       const adminRef = doc(db, 'admins', result.user.uid);
       const adminSnap = await getDoc(adminRef);
       if (!adminSnap.exists()) {
@@ -42,7 +42,7 @@ export const loginWithGoogle = async () => {
     
     // Check if admin, if email is authorized, auto-add to admins
     const authorizedBootstrappers = ['cinside.info@gmail.com', 'holasolonet@gmail.com', 'caballerovazquezrafael@gmail.com', 'taquilla@cuevas.com', 'taquilla@cuevasdealajar.com', 'cuevasdealajar@gmail.com', 'admin@cuevasdealajar.com'];
-    if (result.user.email && authorizedBootstrappers.includes(result.user.email)) {
+    if (result.user.email && authorizedBootstrappers.some(e => e.toLowerCase() === result.user.email!.toLowerCase())) {
       const adminRef = doc(db, 'admins', result.user.uid);
       const adminSnap = await getDoc(adminRef);
       if (!adminSnap.exists()) {

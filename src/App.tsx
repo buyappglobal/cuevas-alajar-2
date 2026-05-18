@@ -27,6 +27,10 @@ const FadeIn = ({ children, delay = 0, ...props }: { children: React.ReactNode, 
   </motion.div>
 );
 
+// CONFIGURE: To re-enable the 16:00 turn after the summer, set IS_SUMMER_SEASON to false
+export const IS_SUMMER_SEASON = true;
+export const AVAILABLE_SLOTS = ['11:00', '12:30', '16:00'];
+
 export default function App() {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isAccessModalOpen, setIsAccessModalOpen] = useState(false);
@@ -40,6 +44,7 @@ export default function App() {
   const [selectedTour, setSelectedTour] = useState('');
   const [lang, setLang] = useState<'es' | 'en'>('es');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSummerInfoOpen, setIsSummerInfoOpen] = useState(false);
   
   const t = (path: string) => {
     const keys = path.split('.');
@@ -185,7 +190,7 @@ export default function App() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const caps: Record<string, number> = {};
       // Initialize with 0 for the standard times
-      ['11:00', '12:30', '16:00'].forEach(t => caps[t] = 0);
+      AVAILABLE_SLOTS.forEach(t => caps[t] = 0);
       
       snapshot.docs.forEach(doc => {
         const data = doc.data();
@@ -872,27 +877,38 @@ export default function App() {
                       </div>
                       {/* Time Slots */}
                       <div className="grid grid-cols-3 gap-2">
-                        {['11:00', '12:30', '16:00'].map(slotTime => {
+                        {AVAILABLE_SLOTS.map(slotTime => {
                           const booked = slotCapacities[slotTime] || 0;
                           // Online capacity is 20, but cannot exceed 30 total
                           const free = Math.max(0, Math.min(MAX_ONLINE_LIMIT - booked, TOTAL_CAPACITY - booked));
                           const isFull = free === 0;
                           const isDateAllowed = isSelectableDate(date);
-                          const isDisabled = isFull || !isDateAllowed;
+                          const isSummerClosed = IS_SUMMER_SEASON && slotTime === '16:00';
+                          const isDisabled = isFull || !isDateAllowed || isSummerClosed;
                           
                           return (
-                          <button
-                            key={slotTime}
-                            type="button"
-                            disabled={isDisabled}
-                            onClick={() => setTime(slotTime)}
-                            className={`py-3 text-[12px] font-bold tracking-[0.1em] border rounded-none transition-all flex flex-col items-center justify-center gap-1 ${time === slotTime ? 'bg-[#C4A484] text-[#0D0D0B] border-[#C4A484]' : isDisabled ? 'bg-red-900/10 border-red-900/20 text-red-500/50 cursor-not-allowed' : 'bg-transparent border-[#E5E2D9]/20 text-[#E5E2D9] hover:border-[#C4A484]/50 hover:text-[#C4A484]'}`}
-                          >
-                            <div className="flex items-center gap-2"><Clock className="w-3 h-3" /> {slotTime}</div>
-                            <span className="text-[9px] opacity-70 tracking-normal font-normal">
-                              {!isDateAllowed ? t('booking.closed') : isFull ? t('booking.full') : `${free} ${t('booking.freeSlots')}`}
-                            </span>
-                          </button>
+                          <div key={slotTime} className="relative">
+                            <button
+                              type="button"
+                              disabled={isDisabled}
+                              onClick={() => setTime(slotTime)}
+                              className={`w-full h-full py-3 px-2 text-[12px] font-bold tracking-[0.1em] border rounded-none transition-all flex flex-col items-center justify-center gap-1 ${time === slotTime ? 'bg-[#C4A484] text-[#0D0D0B] border-[#C4A484]' : isSummerClosed ? 'bg-red-950/20 border-red-900/30 text-red-500/70 cursor-not-allowed' : isDisabled ? 'bg-red-900/10 border-red-900/20 text-red-500/50 cursor-not-allowed' : 'bg-transparent border-[#E5E2D9]/20 text-[#E5E2D9] hover:border-[#C4A484]/50 hover:text-[#C4A484]'}`}
+                            >
+                              <div className="flex items-center gap-2"><Clock className="w-3 h-3" /> {slotTime}</div>
+                              <span className="text-[9px] opacity-70 tracking-normal font-normal">
+                                {!isDateAllowed ? t('booking.closed') : isSummerClosed ? 'Cerrado' : isFull ? t('booking.full') : `${free} ${t('booking.freeSlots')}`}
+                              </span>
+                            </button>
+                            {isSummerClosed && (
+                              <button
+                                type="button" 
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsSummerInfoOpen(true); }}
+                                className="absolute top-1 right-1 text-red-500/70 hover:text-red-400 z-10 cursor-pointer p-1"
+                              >
+                                <Info className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
                         )})}
                       </div>
                     </div>
@@ -1274,6 +1290,44 @@ export default function App() {
                 <p><span className="font-bold">{t('booking.legitimacy')}:</span> {t('booking.legitimacyText')}</p>
                 <p><span className="font-bold">{t('booking.rights')}:</span> {t('booking.rightsText')}</p>
                 <p className="mt-6 pt-4 border-t border-[#E5E2D9]/10 opacity-60 normal-case text-[10px]">{t('booking.rgpdNotice')}</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Summer Info Modal */}
+      <AnimatePresence>
+        {isSummerInfoOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] bg-[#0D0D0B]/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setIsSummerInfoOpen(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-[#0D0D0B] text-[#E5E2D9] rounded-none w-full max-w-sm border border-[#E5E2D9]/10 relative shadow-2xl p-8"
+            >
+              <button onClick={() => setIsSummerInfoOpen(false)} className="absolute top-4 right-4 text-[#E5E2D9]/30 hover:text-white"><X className="w-5 h-5" /></button>
+              <div className="flex items-center gap-3 mb-6">
+                <Info className="w-6 h-6 text-[#C4A484]" />
+                <h3 className="font-serif text-2xl tracking-wide uppercase text-[#C4A484]">Horario de Verano</h3>
+              </div>
+              <div className="space-y-4 text-sm text-[#E5E2D9]/80 leading-relaxed font-light">
+                <p>
+                  Durante el período estival <strong className="text-white font-medium">las visitas de las 16:00 horas quedan suspendidas</strong> por motivos de las altas temperaturas y en prevención de la salud e integridad de los visitantes.
+                </p>
+                <p>
+                  Este turno <strong className="text-[#C4A484] font-medium">volverá a estar disponible</strong> una vez que finalice el verano.
+                </p>
+                <p>
+                  Disculpen las molestias y gracias por su comprensión.
+                </p>
               </div>
             </motion.div>
           </motion.div>
