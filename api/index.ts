@@ -79,7 +79,7 @@ const firebaseApp = admin.apps.length === 0
   : admin.app();
 
 try {
-  const dbId = firebaseConfig.firestoreDatabaseId;
+  const dbId = firebaseConfig.firestoreDatabaseId || process.env.VITE_FIREBASE_DATABASE_ID || process.env.FIREBASE_DATABASE_ID;
   console.log("🔍 Attempting to initialize Firestore...");
   
   // Use getFirestore function from firebase-admin/firestore to initialize correctly
@@ -537,7 +537,7 @@ app.post(['/api/resend/sync', '/resend-sync'], async (req, res) => {
       }
       
       console.log(`✅ Coincidencia encontrada! Procesando: ${email.id}`);
-      const full = await resend.emails.get({ emailId: email.id });
+      const full = await resend.emails.get(email.id);
       let localizador = null;
       
       let html = full.data?.html || '';
