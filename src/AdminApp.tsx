@@ -2373,7 +2373,7 @@ export default function AdminApp() {
               theme === 'dark' ? 'bg-[#151515] border-[#C4A484]/30 text-[#E5E2D9]' : 'bg-white border-gray-200 text-gray-900'
             }`}
           >
-            <h3 className="font-serif text-xl mb-6">Configuración Temporada</h3>
+            <h3 className="font-serif text-xl mb-6">Configuración Temporada Verano</h3>
             <div className="space-y-4">
                 <div>
                     <label className="text-[10px] uppercase font-bold opacity-50 block mb-1">Inicio Verano</label>
