@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { db, auth, loginWithGoogle, loginWithEmail, logout } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, query, getDocs, doc, getDoc, setDoc, updateDoc, increment, where, onSnapshot, deleteDoc } from 'firebase/firestore';
-import { Calendar, Clock, Ticket, Users, FileText, CheckCircle, Plus, LogOut, Mountain, X, RefreshCw, Loader2, Info, Ban, AlertCircle, Copy, Mail, Sun, Moon, Globe, Maximize, Minimize, BarChart3, Download, PieChart as PieChartIcon, Eye, EyeOff } from 'lucide-react';
+import { Calendar, Clock, Ticket, Users, FileText, CheckCircle, Plus, LogOut, Mountain, X, RefreshCw, Loader2, Info, Ban, AlertCircle, Copy, Mail, Sun, Moon, Globe, Maximize, Minimize, BarChart3, Download, PieChart as PieChartIcon, Eye, EyeOff, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import { translations } from './translations';
@@ -34,6 +34,23 @@ export default function AdminApp() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settings, setSettings] = useState({ summerStartDate: '', summerEndDate: '' });
+  
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'config'), (doc) => {
+        if (doc.exists()) {
+            setSettings(doc.data() as any);
+        }
+    });
+    return () => unsub();
+  }, []);
+  
+  const saveSettings = async () => {
+    await setDoc(doc(db, 'settings', 'config'), settings);
+    alert('Configuración guardada');
+    setIsSettingsOpen(false);
+  }
   const [reportStartDate, setReportStartDate] = useState(dateFilter);
   const [reportEndDate, setReportEndDate] = useState(dateFilter);
   const [reportFilterType, setReportFilterType] = useState<'visit' | 'creation'>('visit');
@@ -2054,6 +2071,13 @@ export default function AdminApp() {
                 </div>
                 <div className="flex items-center gap-3">
                   <button 
+                    onClick={() => setIsSettingsOpen(true)}
+                    className={`p-2 transition-colors ${theme === 'dark' ? 'text-[#E5E2D9]/40 hover:text-[#C4A484]' : 'text-gray-400 hover:text-[#C4A484]'}`}
+                    title="Configuración"
+                  >
+                    <Settings className="w-5 h-5" />
+                  </button>
+                  <button 
                     onClick={() => downloadCSV(stats.reportData, `informe_reservas_${reportStartDate}_al_${reportEndDate}.csv`)}
                     className={`px-4 py-2 text-[10px] uppercase font-bold tracking-widest border transition-all flex items-center gap-2 hover:bg-[#C4A484] hover:text-white ${
                       theme === 'dark' ? 'border-[#C4A484]/30 text-[#C4A484]' : 'border-[#C4A484] text-[#C4A484]'
@@ -2339,6 +2363,35 @@ export default function AdminApp() {
           </div>
         )}
       </AnimatePresence>
+      {/* Settings Modal */}
+      {isSettingsOpen && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[80] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={`w-full max-w-sm p-6 border shadow-2xl transition-colors ${
+              theme === 'dark' ? 'bg-[#151515] border-[#C4A484]/30 text-[#E5E2D9]' : 'bg-white border-gray-200 text-gray-900'
+            }`}
+          >
+            <h3 className="font-serif text-xl mb-6">Configuración Temporada</h3>
+            <div className="space-y-4">
+                <div>
+                    <label className="text-[10px] uppercase font-bold opacity-50 block mb-1">Inicio Verano</label>
+                    <input type="date" value={settings.summerStartDate} onChange={e => setSettings({...settings, summerStartDate: e.target.value})} className="w-full bg-transparent border p-2 text-sm" />
+                </div>
+                <div>
+                    <label className="text-[10px] uppercase font-bold opacity-50 block mb-1">Fin Verano</label>
+                    <input type="date" value={settings.summerEndDate} onChange={e => setSettings({...settings, summerEndDate: e.target.value})} className="w-full bg-transparent border p-2 text-sm" />
+                </div>
+            </div>
+            <div className="flex gap-3 mt-8">
+                <button onClick={() => setIsSettingsOpen(false)} className="flex-1 py-2 border text-xs uppercase font-bold">Cancelar</button>
+                <button onClick={saveSettings} className="flex-1 py-2 bg-[#C4A484] text-[#0D0D0B] text-xs uppercase font-bold">Guardar</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
     </div>
   );
 }

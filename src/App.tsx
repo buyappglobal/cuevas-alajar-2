@@ -68,6 +68,22 @@ export default function App() {
   const [customerPostalCode, setCustomerPostalCode] = useState('');
   const [customerCity, setCustomerCity] = useState('');
   
+  const [summerSettings, setSummerSettings] = useState({ summerStartDate: '', summerEndDate: '' });
+
+  useEffect(() => {
+    const unsub = onSnapshot(doc(db, 'settings', 'config'), (doc) => {
+      if (doc.exists()) {
+        setSummerSettings(doc.data() as any);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  const isSummerSeason = (dateStr: string) => {
+    if (!summerSettings.summerStartDate || !summerSettings.summerEndDate) return false;
+    return dateStr >= summerSettings.summerStartDate && dateStr <= summerSettings.summerEndDate;
+  };
+  
   const [isLoadingPayment, setIsLoadingPayment] = useState(false);
 
   // Fetch city from API when CP changes
@@ -883,7 +899,7 @@ export default function App() {
                           const free = Math.max(0, Math.min(MAX_ONLINE_LIMIT - booked, TOTAL_CAPACITY - booked));
                           const isFull = free === 0;
                           const isDateAllowed = isSelectableDate(date);
-                          const isSummerClosed = IS_SUMMER_SEASON && slotTime === '16:00';
+                          const isSummerClosed = (summerSettings.summerStartDate ? isSummerSeason(date) : IS_SUMMER_SEASON) && slotTime === '16:00';
                           const isDisabled = isFull || !isDateAllowed || isSummerClosed;
                           
                           return (

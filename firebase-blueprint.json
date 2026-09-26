@@ -37,6 +37,16 @@
       "properties": {
         "email": { "type": "string" }
       }
+    },
+    "Settings": {
+      "title": "Settings",
+      "description": "Application wide settings",
+      "type": "object",
+      "properties": {
+        "summerStartDate": { "type": "string" },
+        "summerEndDate": { "type": "string" }
+      },
+      "required": ["summerStartDate", "summerEndDate"]
     }
   },
   "firestore": {
@@ -51,6 +61,10 @@
     "/slots/{slotId}": {
       "schema": { "$ref": "#/entities/Slot" },
       "description": "Public capacity counters"
+    },
+    "/settings/{configId}": {
+      "schema": { "$ref": "#/entities/Settings" },
+      "description": "Global application configuration"
     }
   }
 }
