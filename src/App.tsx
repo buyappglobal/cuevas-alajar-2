@@ -75,6 +75,8 @@ export default function App() {
       if (doc.exists()) {
         setSummerSettings(doc.data() as any);
       }
+    }, (err) => {
+      console.warn("Could not listen to settings/config:", err);
     });
     return () => unsub();
   }, []);

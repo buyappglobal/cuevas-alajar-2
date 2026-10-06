@@ -11,13 +11,15 @@ service cloud.firestore {
     function isAdmin() {
       return isSignedIn() && (
         exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        request.auth.token.email.matches('(?i)cinside\\.info@gmail\\.com') ||
-        request.auth.token.email.matches('(?i)holasolonet@gmail\\.com') ||
-        request.auth.token.email.matches('(?i)caballerovazquezrafael@gmail\\.com') ||
-        request.auth.token.email.matches('(?i)taquilla@cuevas\\.com') ||
-        request.auth.token.email.matches('(?i)taquilla@cuevasdealajar\\.com') ||
-        request.auth.token.email.matches('(?i)admin@cuevasdealajar\\.com') ||
-        request.auth.token.email.matches('(?i)cuevasdealajar@gmail\\.com')
+        (('email' in request.auth.token) && (
+          request.auth.token.email.matches('(?i)cinside\\.info@gmail\\.com') ||
+          request.auth.token.email.matches('(?i)holasolonet@gmail\\.com') ||
+          request.auth.token.email.matches('(?i)caballerovazquezrafael@gmail\\.com') ||
+          request.auth.token.email.matches('(?i)taquilla@cuevas\\.com') ||
+          request.auth.token.email.matches('(?i)taquilla@cuevasdealajar\\.com') ||
+          request.auth.token.email.matches('(?i)admin@cuevasdealajar\\.com') ||
+          request.auth.token.email.matches('(?i)cuevasdealajar@gmail\\.com')
+        ))
       );
     }
 
@@ -42,7 +44,7 @@ service cloud.firestore {
     match /admins/{adminId} {
       allow read: if isSignedIn();
       // Allow bootstrapping for authorized emails
-      allow write: if isSignedIn() && (
+      allow write: if isSignedIn() && ('email' in request.auth.token) && (
         request.auth.token.email.matches('(?i)cinside\\.info@gmail\\.com') ||
         request.auth.token.email.matches('(?i)holasolonet@gmail\\.com') ||
         request.auth.token.email.matches('(?i)caballerovazquezrafael@gmail\\.com') ||

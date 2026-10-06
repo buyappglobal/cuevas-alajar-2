@@ -42,6 +42,8 @@ export default function AdminApp() {
         if (doc.exists()) {
             setSettings(doc.data() as any);
         }
+    }, (err) => {
+        console.warn("Could not listen to settings/config in Admin:", err);
     });
     return () => unsub();
   }, []);
@@ -778,23 +780,24 @@ export default function AdminApp() {
     let unsub: (() => void) | undefined;
 
     const startListening = () => {
+      if (!auth.currentUser) return;
       const q = query(collection(db, 'reservations'));
       unsub = onSnapshot(q, (snap) => {
         const res = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setAllReservations(res);
       }, (err) => {
-        console.error("Error en tiempo real:", err);
+        console.warn("Error listening to reservations:", err);
       });
     };
 
-    if (isBypass || isAdmin) {
+    if (user && isAdmin) {
       startListening();
     }
 
     return () => {
       if (unsub) unsub();
     };
-  }, [isAdmin, isBypass]);
+  }, [user, isAdmin]);
 
   // Reservas filtradas por el día seleccionado (solo para el dashboard de aforo)
   const dayReservations = allReservations.filter(r => 
@@ -1180,7 +1183,7 @@ export default function AdminApp() {
   }
 
   // Aggregate capacities from dayReservations for active dashboard
-  const canSeeReports = ['cinside.info@gmail.com', 'holasolonet@gmail.com'].includes(user?.email || '') || isBypass;
+  const canSeeReports = isAdmin || isBypass;
 
   return (
     <div className={`min-h-screen font-sans transition-colors duration-300 ${
