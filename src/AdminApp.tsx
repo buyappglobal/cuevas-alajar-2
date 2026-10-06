@@ -35,18 +35,21 @@ export default function AdminApp() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settings, setSettings] = useState({ summerStartDate: '', summerEndDate: '' });
+  const [settings, setSettings] = useState({ summerStartDate: '', summerEndDate: '', slot1: '11:00', slot2: '12:30', slot3: '16:00' });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   
   useEffect(() => {
     const local = localStorage.getItem('summerSettings');
     if (local) {
-      try { setSettings(JSON.parse(local)); } catch (e) {}
+      try { 
+        const parsed = JSON.parse(local);
+        setSettings(prev => ({ ...prev, ...parsed })); 
+      } catch (e) {}
     }
     const unsub = onSnapshot(doc(db, 'settings', 'config'), (doc) => {
         if (doc.exists()) {
             const data = doc.data() as any;
-            setSettings(data);
+            setSettings(prev => ({ ...prev, ...data }));
             localStorage.setItem('summerSettings', JSON.stringify(data));
         }
     }, (err) => {
@@ -375,7 +378,13 @@ export default function AdminApp() {
     : filteredReservations.slice(0, itemsPerPage);
 
   // Capacidades actuales basadas EN LA FECHA DE BÚSQUEDA (dateFilter)
-  const slots = IS_SUMMER_SEASON ? ['11:00', '12:30'] : ['11:00', '12:30', '16:00'];
+  const slot1 = settings.slot1 || '11:00';
+  const slot2 = settings.slot2 || '12:30';
+  const slot3 = settings.slot3 || '16:00';
+  const isFilterDateSummer = (settings.summerStartDate && settings.summerEndDate)
+    ? (dateFilter >= settings.summerStartDate && dateFilter <= settings.summerEndDate)
+    : IS_SUMMER_SEASON;
+  const slots = isFilterDateSummer ? [slot1, slot2] : [slot1, slot2, slot3];
   const capacities = slots.reduce((acc, slot) => {
     const slotRes = allReservations.filter(r => 
       r.date === dateFilter && r.time === slot && (r.status === 'confirmed' || r.status === 'paid')
@@ -1956,9 +1965,9 @@ export default function AdminApp() {
                         theme === 'dark' ? 'bg-[#0D0D0B] border-[#E5E2D9]/10 text-[#E5E2D9]' : 'bg-gray-50 border-gray-200 text-gray-900'
                       }`}
                     >
-                      <option value="11:00">11:00</option>
-                      <option value="12:30">12:30</option>
-                      {!IS_SUMMER_SEASON && <option value="16:00">16:00</option>}
+                      <option value={slot1}>{slot1}</option>
+                      <option value={slot2}>{slot2}</option>
+                      {!isFilterDateSummer && <option value={slot3}>{slot3}</option>}
                     </select>
                   </div>
                 </div>
@@ -2393,16 +2402,57 @@ export default function AdminApp() {
               theme === 'dark' ? 'bg-[#151515] border-[#C4A484]/30 text-[#E5E2D9]' : 'bg-white border-gray-200 text-gray-900'
             }`}
           >
-            <h3 className="font-serif text-xl mb-6">Configuración Temporada Verano</h3>
-            <div className="space-y-4">
-                <div>
+            <h3 className="font-serif text-xl mb-4 text-[#C4A484]">Configuración de Horarios y Verano</h3>
+            <div className="space-y-5 text-left">
+              <div className="border-b border-gray-500/20 pb-4">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#C4A484] block mb-2">Horarios de Visitas (3 Turnos)</span>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-[10px] uppercase font-bold opacity-60 block mb-1">Turno 1</label>
+                    <input 
+                      type="text" 
+                      value={settings.slot1 || '11:00'} 
+                      onChange={e => setSettings({...settings, slot1: e.target.value})} 
+                      className={`w-full bg-transparent border p-2 text-xs font-bold text-center rounded ${theme === 'dark' ? 'border-[#E5E2D9]/20' : 'border-gray-300'}`} 
+                      placeholder="11:00" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase font-bold opacity-60 block mb-1">Turno 2</label>
+                    <input 
+                      type="text" 
+                      value={settings.slot2 || '12:30'} 
+                      onChange={e => setSettings({...settings, slot2: e.target.value})} 
+                      className={`w-full bg-transparent border p-2 text-xs font-bold text-center rounded ${theme === 'dark' ? 'border-[#E5E2D9]/20' : 'border-gray-300'}`} 
+                      placeholder="12:30" 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] uppercase font-bold opacity-60 block mb-1">Turno 3 (Tarde)</label>
+                    <input 
+                      type="text" 
+                      value={settings.slot3 || '16:00'} 
+                      onChange={e => setSettings({...settings, slot3: e.target.value})} 
+                      className={`w-full bg-transparent border p-2 text-xs font-bold text-center rounded ${theme === 'dark' ? 'border-[#E5E2D9]/20' : 'border-gray-300'}`} 
+                      placeholder="16:00" 
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#C4A484] block mb-2">Temporada de Verano (Desactiva Turno 3)</span>
+                <div className="space-y-3">
+                  <div>
                     <label className="text-[10px] uppercase font-bold opacity-50 block mb-1">Inicio Verano</label>
-                    <input type="date" value={settings.summerStartDate || ''} onChange={e => setSettings({...settings, summerStartDate: e.target.value})} className="w-full bg-transparent border p-2 text-sm rounded cursor-pointer" />
-                </div>
-                <div>
+                    <input type="date" value={settings.summerStartDate || ''} onChange={e => setSettings({...settings, summerStartDate: e.target.value})} className={`w-full bg-transparent border p-2 text-xs rounded cursor-pointer ${theme === 'dark' ? 'border-[#E5E2D9]/20 [color-scheme:dark]' : 'border-gray-300'}`} />
+                  </div>
+                  <div>
                     <label className="text-[10px] uppercase font-bold opacity-50 block mb-1">Fin Verano</label>
-                    <input type="date" value={settings.summerEndDate || ''} onChange={e => setSettings({...settings, summerEndDate: e.target.value})} className="w-full bg-transparent border p-2 text-sm rounded cursor-pointer" />
+                    <input type="date" value={settings.summerEndDate || ''} onChange={e => setSettings({...settings, summerEndDate: e.target.value})} className={`w-full bg-transparent border p-2 text-xs rounded cursor-pointer ${theme === 'dark' ? 'border-[#E5E2D9]/20 [color-scheme:dark]' : 'border-gray-300'}`} />
+                  </div>
                 </div>
+              </div>
             </div>
             <div className="flex gap-3 mt-8">
                 <button type="button" onClick={() => setIsSettingsOpen(false)} className="flex-1 py-2.5 border text-xs uppercase font-bold rounded hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer">Cancelar</button>

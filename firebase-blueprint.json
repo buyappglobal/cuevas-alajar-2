@@ -44,9 +44,11 @@
       "type": "object",
       "properties": {
         "summerStartDate": { "type": "string" },
-        "summerEndDate": { "type": "string" }
-      },
-      "required": ["summerStartDate", "summerEndDate"]
+        "summerEndDate": { "type": "string" },
+        "slot1": { "type": "string" },
+        "slot2": { "type": "string" },
+        "slot3": { "type": "string" }
+      }
     }
   },
   "firestore": {

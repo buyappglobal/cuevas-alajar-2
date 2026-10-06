@@ -68,17 +68,26 @@ export default function App() {
   const [customerPostalCode, setCustomerPostalCode] = useState('');
   const [customerCity, setCustomerCity] = useState('');
   
-  const [summerSettings, setSummerSettings] = useState({ summerStartDate: '', summerEndDate: '' });
+  const [summerSettings, setSummerSettings] = useState({ 
+    summerStartDate: '', 
+    summerEndDate: '',
+    slot1: '11:00',
+    slot2: '12:30',
+    slot3: '16:00'
+  });
 
   useEffect(() => {
     const local = localStorage.getItem('summerSettings');
     if (local) {
-      try { setSummerSettings(JSON.parse(local)); } catch (e) {}
+      try { 
+        const parsed = JSON.parse(local);
+        setSummerSettings(prev => ({ ...prev, ...parsed })); 
+      } catch (e) {}
     }
     const unsub = onSnapshot(doc(db, 'settings', 'config'), (doc) => {
       if (doc.exists()) {
         const data = doc.data() as any;
-        setSummerSettings(data);
+        setSummerSettings(prev => ({ ...prev, ...data }));
         localStorage.setItem('summerSettings', JSON.stringify(data));
       }
     }, (err) => {
@@ -214,7 +223,8 @@ export default function App() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const caps: Record<string, number> = {};
       // Initialize with 0 for the standard times
-      AVAILABLE_SLOTS.forEach(t => caps[t] = 0);
+      const availableSlots = [summerSettings.slot1 || '11:00', summerSettings.slot2 || '12:30', summerSettings.slot3 || '16:00'];
+      availableSlots.forEach(t => caps[t] = 0);
       
       snapshot.docs.forEach(doc => {
         const data = doc.data();
@@ -901,13 +911,13 @@ export default function App() {
                       </div>
                       {/* Time Slots */}
                       <div className="grid grid-cols-3 gap-2">
-                        {AVAILABLE_SLOTS.map(slotTime => {
+                        {[summerSettings.slot1 || '11:00', summerSettings.slot2 || '12:30', summerSettings.slot3 || '16:00'].map((slotTime, idx) => {
                           const booked = slotCapacities[slotTime] || 0;
                           // Online capacity is 20, but cannot exceed 30 total
                           const free = Math.max(0, Math.min(MAX_ONLINE_LIMIT - booked, TOTAL_CAPACITY - booked));
                           const isFull = free === 0;
                           const isDateAllowed = isSelectableDate(date);
-                          const isSummerClosed = (summerSettings.summerStartDate ? isSummerSeason(date) : IS_SUMMER_SEASON) && slotTime === '16:00';
+                          const isSummerClosed = (summerSettings.summerStartDate ? isSummerSeason(date) : IS_SUMMER_SEASON) && idx === 2;
                           const isDisabled = isFull || !isDateAllowed || isSummerClosed;
                           
                           return (
@@ -1345,7 +1355,7 @@ export default function App() {
               </div>
               <div className="space-y-4 text-sm text-[#E5E2D9]/80 leading-relaxed font-light">
                 <p>
-                  Durante el período estival <strong className="text-white font-medium">las visitas de las 16:00 horas quedan suspendidas</strong> por motivos de las altas temperaturas y en prevención de la salud e integridad de los visitantes.
+                  Durante el período estival <strong className="text-white font-medium">las visitas de las {summerSettings.slot3 || '16:00'} horas quedan suspendidas</strong> por motivos de las altas temperaturas y en prevención de la salud e integridad de los visitantes.
                 </p>
                 <p>
                   Este turno <strong className="text-[#C4A484] font-medium">volverá a estar disponible</strong> una vez que finalice el verano.
