@@ -71,9 +71,15 @@ export default function App() {
   const [summerSettings, setSummerSettings] = useState({ summerStartDate: '', summerEndDate: '' });
 
   useEffect(() => {
+    const local = localStorage.getItem('summerSettings');
+    if (local) {
+      try { setSummerSettings(JSON.parse(local)); } catch (e) {}
+    }
     const unsub = onSnapshot(doc(db, 'settings', 'config'), (doc) => {
       if (doc.exists()) {
-        setSummerSettings(doc.data() as any);
+        const data = doc.data() as any;
+        setSummerSettings(data);
+        localStorage.setItem('summerSettings', JSON.stringify(data));
       }
     }, (err) => {
       console.warn("Could not listen to settings/config:", err);

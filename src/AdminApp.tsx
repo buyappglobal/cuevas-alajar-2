@@ -36,11 +36,18 @@ export default function AdminApp() {
   const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [settings, setSettings] = useState({ summerStartDate: '', summerEndDate: '' });
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
   
   useEffect(() => {
+    const local = localStorage.getItem('summerSettings');
+    if (local) {
+      try { setSettings(JSON.parse(local)); } catch (e) {}
+    }
     const unsub = onSnapshot(doc(db, 'settings', 'config'), (doc) => {
         if (doc.exists()) {
-            setSettings(doc.data() as any);
+            const data = doc.data() as any;
+            setSettings(data);
+            localStorage.setItem('summerSettings', JSON.stringify(data));
         }
     }, (err) => {
         console.warn("Could not listen to settings/config in Admin:", err);
@@ -49,9 +56,19 @@ export default function AdminApp() {
   }, []);
   
   const saveSettings = async () => {
-    await setDoc(doc(db, 'settings', 'config'), settings);
-    alert('Configuración guardada');
-    setIsSettingsOpen(false);
+    setIsSavingSettings(true);
+    try {
+      localStorage.setItem('summerSettings', JSON.stringify(settings));
+      await setDoc(doc(db, 'settings', 'config'), settings, { merge: true });
+      alert('Configuración guardada correctamente');
+      setIsSettingsOpen(false);
+    } catch (err: any) {
+      console.error("Error al guardar la configuración:", err);
+      alert('Configuración guardada en este navegador. (' + (err?.message || 'Error de permisos') + ')');
+      setIsSettingsOpen(false);
+    } finally {
+      setIsSavingSettings(false);
+    }
   }
   const [reportStartDate, setReportStartDate] = useState(dateFilter);
   const [reportEndDate, setReportEndDate] = useState(dateFilter);
@@ -2380,16 +2397,18 @@ export default function AdminApp() {
             <div className="space-y-4">
                 <div>
                     <label className="text-[10px] uppercase font-bold opacity-50 block mb-1">Inicio Verano</label>
-                    <input type="date" value={settings.summerStartDate} onChange={e => setSettings({...settings, summerStartDate: e.target.value})} className="w-full bg-transparent border p-2 text-sm" />
+                    <input type="date" value={settings.summerStartDate || ''} onChange={e => setSettings({...settings, summerStartDate: e.target.value})} className="w-full bg-transparent border p-2 text-sm rounded cursor-pointer" />
                 </div>
                 <div>
                     <label className="text-[10px] uppercase font-bold opacity-50 block mb-1">Fin Verano</label>
-                    <input type="date" value={settings.summerEndDate} onChange={e => setSettings({...settings, summerEndDate: e.target.value})} className="w-full bg-transparent border p-2 text-sm" />
+                    <input type="date" value={settings.summerEndDate || ''} onChange={e => setSettings({...settings, summerEndDate: e.target.value})} className="w-full bg-transparent border p-2 text-sm rounded cursor-pointer" />
                 </div>
             </div>
             <div className="flex gap-3 mt-8">
-                <button onClick={() => setIsSettingsOpen(false)} className="flex-1 py-2 border text-xs uppercase font-bold">Cancelar</button>
-                <button onClick={saveSettings} className="flex-1 py-2 bg-[#C4A484] text-[#0D0D0B] text-xs uppercase font-bold">Guardar</button>
+                <button type="button" onClick={() => setIsSettingsOpen(false)} className="flex-1 py-2.5 border text-xs uppercase font-bold rounded hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer">Cancelar</button>
+                <button type="button" disabled={isSavingSettings} onClick={saveSettings} className="flex-1 py-2.5 bg-[#C4A484] hover:bg-[#b08e6f] active:scale-[0.98] disabled:opacity-50 text-[#0D0D0B] text-xs uppercase font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-2">
+                  {isSavingSettings ? 'Guardando...' : 'Guardar'}
+                </button>
             </div>
           </motion.div>
         </div>
