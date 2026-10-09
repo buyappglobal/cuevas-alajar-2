@@ -27,8 +27,8 @@ const FadeIn = ({ children, delay = 0, ...props }: { children: React.ReactNode, 
   </motion.div>
 );
 
-// CONFIGURE: To re-enable the 16:00 turn after the summer, set IS_SUMMER_SEASON to false
-export const IS_SUMMER_SEASON = true;
+// CONFIGURE: Summer season active status
+export const IS_SUMMER_SEASON = false;
 export const AVAILABLE_SLOTS = ['11:00', '12:30', '16:00'];
 
 export default function App() {
@@ -238,7 +238,7 @@ export default function App() {
     });
     
     return () => unsubscribe();
-  }, [date, isBookingModalOpen]);
+  }, [date, isBookingModalOpen, summerSettings.slot1, summerSettings.slot2, summerSettings.slot3]);
   
   const currentSlotBooked = (time && slotCapacities[time]) ? slotCapacities[time] : 0;
   
@@ -917,7 +917,7 @@ export default function App() {
                           const free = Math.max(0, Math.min(MAX_ONLINE_LIMIT - booked, TOTAL_CAPACITY - booked));
                           const isFull = free === 0;
                           const isDateAllowed = isSelectableDate(date);
-                          const isSummerClosed = (summerSettings.summerStartDate ? isSummerSeason(date) : IS_SUMMER_SEASON) && idx === 2;
+                          const isSummerClosed = (summerSettings.summerStartDate && summerSettings.summerEndDate) ? (isSummerSeason(date) && idx === 2) : false;
                           const isDisabled = isFull || !isDateAllowed || isSummerClosed;
                           
                           return (

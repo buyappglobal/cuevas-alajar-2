@@ -383,7 +383,7 @@ export default function AdminApp() {
   const slot3 = settings.slot3 || '16:00';
   const isFilterDateSummer = (settings.summerStartDate && settings.summerEndDate)
     ? (dateFilter >= settings.summerStartDate && dateFilter <= settings.summerEndDate)
-    : IS_SUMMER_SEASON;
+    : false;
   const slots = isFilterDateSummer ? [slot1, slot2] : [slot1, slot2, slot3];
   const capacities = slots.reduce((acc, slot) => {
     const slotRes = allReservations.filter(r => 
