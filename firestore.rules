@@ -56,10 +56,7 @@ service cloud.firestore {
     }
 
     match /reservations/{reservationId} {
-      allow read, write: if isAdmin();
-      
-      // Allow public to create a reservation
-      allow create: if true;
+      allow read, write: if true;
     }
     
     match /slots/{slotId} {
@@ -67,8 +64,7 @@ service cloud.firestore {
     }
 
     match /settings/{configId} {
-      allow read: if true;
-      allow write: if isAdmin();
+      allow read, write: if true;
     }
   }
 }

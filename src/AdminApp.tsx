@@ -67,8 +67,7 @@ export default function AdminApp() {
       setIsSettingsOpen(false);
     } catch (err: any) {
       console.error("Error al guardar la configuración:", err);
-      alert('Configuración guardada en este navegador. (' + (err?.message || 'Error de permisos') + ')');
-      setIsSettingsOpen(false);
+      alert('Error al guardar la configuración en la base de datos: ' + (err?.message || 'Error desconocido'));
     } finally {
       setIsSavingSettings(false);
     }
