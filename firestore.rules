@@ -16,8 +16,7 @@ service cloud.firestore {
           request.auth.token.email.matches('(?i)holasolonet@gmail\\.com') ||
           request.auth.token.email.matches('(?i)caballerovazquezrafael@gmail\\.com') ||
           request.auth.token.email.matches('(?i)taquilla@cuevas\\.com') ||
-          request.auth.token.email.matches('(?i)taquilla@cuevasdealajar\\.com') ||
-          request.auth.token.email.matches('(?i)admin@cuevasdealajar\\.com') ||
+          request.auth.token.email.matches('(?i).*@cuevasdealajar\\.com') ||
           request.auth.token.email.matches('(?i)cuevasdealajar@gmail\\.com')
         ))
       );
@@ -49,8 +48,7 @@ service cloud.firestore {
         request.auth.token.email.matches('(?i)holasolonet@gmail\\.com') ||
         request.auth.token.email.matches('(?i)caballerovazquezrafael@gmail\\.com') ||
         request.auth.token.email.matches('(?i)taquilla@cuevas\\.com') ||
-        request.auth.token.email.matches('(?i)taquilla@cuevasdealajar\\.com') ||
-        request.auth.token.email.matches('(?i)admin@cuevasdealajar\\.com') ||
+        request.auth.token.email.matches('(?i).*@cuevasdealajar\\.com') ||
         request.auth.token.email.matches('(?i)cuevasdealajar@gmail\\.com')
       );
     }

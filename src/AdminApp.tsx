@@ -793,9 +793,14 @@ export default function AdminApp() {
             'taquilla@cuevas.com', 
             'taquilla@cuevasdealajar.com',
             'admin@cuevasdealajar.com',
-            'cuevasdealajar@gmail.com'
+            'cuevasdealajar@gmail.com',
+            'info@cuevasdealajar.com'
           ];
-          const isAuthorizedEmail = u.email && authorizedEmails.some(e => e.toLowerCase() === u.email?.toLowerCase());
+          const emailClean = u.email ? u.email.trim().toLowerCase() : '';
+          const isAuthorizedEmail = emailClean && (
+            authorizedEmails.some(e => e.toLowerCase() === emailClean) ||
+            emailClean.endsWith('@cuevasdealajar.com')
+          );
           
           if (isAuthorizedEmail) {
             try {
