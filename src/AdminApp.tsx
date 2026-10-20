@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { db, auth, loginWithGoogle, loginWithEmail, logout } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { collection, query, getDocs, doc, getDoc, setDoc, updateDoc, increment, where, onSnapshot, deleteDoc } from 'firebase/firestore';
-import { Calendar, Clock, Ticket, Users, FileText, CheckCircle, Plus, LogOut, Mountain, X, RefreshCw, Loader2, Info, Ban, AlertCircle, Copy, Mail, Sun, Moon, Globe, Maximize, Minimize, BarChart3, Download, PieChart as PieChartIcon, Eye, EyeOff, Settings } from 'lucide-react';
+import { Calendar, Clock, Ticket, Users, FileText, CheckCircle, Plus, LogOut, Mountain, X, RefreshCw, Loader2, Info, Ban, AlertCircle, Copy, Mail, Sun, Moon, Globe, Maximize, Minimize, BarChart3, Download, PieChart as PieChartIcon, Eye, EyeOff, Settings, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
 import { translations } from './translations';
@@ -35,8 +35,50 @@ export default function AdminApp() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [settings, setSettings] = useState({ summerStartDate: '', summerEndDate: '', slot1: '11:00', slot2: '12:30', slot3: '16:00' });
+  const [settings, setSettings] = useState<{
+    summerStartDate: string;
+    summerEndDate: string;
+    slot1: string;
+    slot2: string;
+    slot3: string;
+    specialOpenDates?: string[];
+  }>({ 
+    summerStartDate: '', 
+    summerEndDate: '', 
+    slot1: '11:00', 
+    slot2: '12:30', 
+    slot3: '16:00',
+    specialOpenDates: [] 
+  });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [newSpecialDate, setNewSpecialDate] = useState('');
+
+  const handleAddSpecialDate = (dateToAdd?: string) => {
+    const targetDate = dateToAdd || newSpecialDate;
+    if (!targetDate) return;
+    const current = settings.specialOpenDates || [];
+    if (current.includes(targetDate)) {
+      alert('Esta fecha ya está añadida como día especial de apertura.');
+      return;
+    }
+    const updated = [...current, targetDate].sort();
+    setSettings({ ...settings, specialOpenDates: updated });
+    setNewSpecialDate('');
+  };
+
+  const handleRemoveSpecialDate = (dateToRemove: string) => {
+    const current = settings.specialOpenDates || [];
+    const updated = current.filter(d => d !== dateToRemove);
+    setSettings({ ...settings, specialOpenDates: updated });
+  };
+
+  const formatSpanishDate = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    return d.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+  };
   
   useEffect(() => {
     const local = localStorage.getItem('summerSettings');
@@ -1332,6 +1374,19 @@ export default function AdminApp() {
                 <span className="hidden lg:inline text-[10px] font-black uppercase tracking-widest">Informes</span>
               </button>
             )}
+
+            <button 
+              onClick={() => setIsSettingsOpen(true)}
+              className={`px-3 py-1.5 rounded-full border transition-all flex items-center gap-2 shadow-sm ${
+                theme === 'dark' 
+                  ? 'bg-[#1A1A1A] border-[#C4A484]/20 text-[#C4A484] hover:bg-[#C4A484]/10' 
+                  : 'bg-white border-gray-200 text-[#C4A484] hover:bg-gray-50'
+              }`}
+              title="Configuración de Horarios y Aperturas"
+            >
+              <Settings className="w-4 h-4" />
+              <span className="hidden lg:inline text-[10px] font-black uppercase tracking-widest">Configuración</span>
+            </button>
           </div>
 
           <button 
@@ -2397,13 +2452,25 @@ export default function AdminApp() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={`w-full max-w-sm p-6 border shadow-2xl transition-colors ${
+            className={`w-full max-w-xl max-h-[90vh] overflow-y-auto p-6 border shadow-2xl transition-colors ${
               theme === 'dark' ? 'bg-[#151515] border-[#C4A484]/30 text-[#E5E2D9]' : 'bg-white border-gray-200 text-gray-900'
             }`}
           >
-            <h3 className="font-serif text-xl mb-4 text-[#C4A484]">Configuración de Horarios y Verano</h3>
-            <div className="space-y-5 text-left">
-              <div className="border-b border-gray-500/20 pb-4">
+            <div className="flex items-center justify-between border-b border-[#C4A484]/30 pb-3 mb-5">
+              <h3 className="font-serif text-xl text-[#C4A484] flex items-center gap-2">
+                <Settings className="w-5 h-5" /> Configuración de Horarios y Aperturas
+              </h3>
+              <button 
+                onClick={() => setIsSettingsOpen(false)}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-6 text-left">
+              {/* Horarios de Visitas */}
+              <div className="border-b border-gray-500/20 pb-5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#C4A484] block mb-2">Horarios de Visitas (3 Turnos)</span>
                 <div className="grid grid-cols-3 gap-2">
                   <div>
@@ -2439,9 +2506,10 @@ export default function AdminApp() {
                 </div>
               </div>
 
-              <div>
+              {/* Temporada de Verano */}
+              <div className="border-b border-gray-500/20 pb-5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#C4A484] block mb-2">Temporada de Verano (Desactiva Turno 3)</span>
-                <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] uppercase font-bold opacity-50 block mb-1">Inicio Verano</label>
                     <input type="date" value={settings.summerStartDate || ''} onChange={e => setSettings({...settings, summerStartDate: e.target.value})} className={`w-full bg-transparent border p-2 text-xs rounded cursor-pointer ${theme === 'dark' ? 'border-[#E5E2D9]/20 [color-scheme:dark]' : 'border-gray-300'}`} />
@@ -2452,12 +2520,81 @@ export default function AdminApp() {
                   </div>
                 </div>
               </div>
+
+              {/* Días Especiales de Apertura */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#C4A484] flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-emerald-400" /> Días Especiales de Apertura
+                  </span>
+                  <span className="text-[10px] bg-emerald-900/40 text-emerald-300 px-2 py-0.5 rounded font-mono font-bold">
+                    {(settings.specialOpenDates || []).length} autorizados
+                  </span>
+                </div>
+
+                <p className="text-[11px] opacity-70 mb-3 leading-relaxed">
+                  Añade aquí las fechas entre semana (como lunes festivos, puentes o fechas especiales) que deban estar <strong>ABIERTAS</strong> para venta de entradas en la web.
+                </p>
+
+                {/* Form to add a special date */}
+                <div className="flex gap-2 mb-4">
+                  <input 
+                    type="date" 
+                    value={newSpecialDate} 
+                    onChange={e => setNewSpecialDate(e.target.value)} 
+                    className={`flex-1 bg-transparent border p-2 text-xs rounded cursor-pointer ${theme === 'dark' ? 'border-[#E5E2D9]/20 [color-scheme:dark]' : 'border-gray-300'}`} 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => handleAddSpecialDate()} 
+                    disabled={!newSpecialDate}
+                    className="bg-[#C4A484] hover:bg-[#b08e6f] disabled:opacity-40 text-[#0D0D0B] px-4 py-2 rounded text-xs font-bold uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Añadir
+                  </button>
+                </div>
+
+                {/* List of Special Dates */}
+                <div className={`p-3 border rounded-lg max-h-48 overflow-y-auto space-y-2 ${theme === 'dark' ? 'bg-[#0D0D0B]/60 border-[#E5E2D9]/10' : 'bg-gray-50 border-gray-200'}`}>
+                  {(!settings.specialOpenDates || settings.specialOpenDates.length === 0) ? (
+                    <p className="text-[11px] opacity-50 text-center py-4 italic">
+                      No hay días especiales configurados.
+                    </p>
+                  ) : (
+                    settings.specialOpenDates.map((d) => (
+                      <div 
+                        key={d} 
+                        className={`flex items-center justify-between p-2 rounded border text-xs transition-colors ${
+                          theme === 'dark' ? 'bg-[#151515] border-[#E5E2D9]/10' : 'bg-white border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-[#C4A484]">{d}</span>
+                          <span className="text-[10px] opacity-70 capitalize">({formatSpanishDate(d)})</span>
+                          <span className="px-1.5 py-0.5 text-[9px] bg-emerald-900/40 text-emerald-300 font-bold uppercase rounded">
+                            Abierto
+                          </span>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => handleRemoveSpecialDate(d)}
+                          className="text-red-400/70 hover:text-red-400 p-1 transition-colors cursor-pointer"
+                          title="Eliminar esta fecha de apertura"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="flex gap-3 mt-8">
-                <button type="button" onClick={() => setIsSettingsOpen(false)} className="flex-1 py-2.5 border text-xs uppercase font-bold rounded hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer">Cancelar</button>
-                <button type="button" disabled={isSavingSettings} onClick={saveSettings} className="flex-1 py-2.5 bg-[#C4A484] hover:bg-[#b08e6f] active:scale-[0.98] disabled:opacity-50 text-[#0D0D0B] text-xs uppercase font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-2">
-                  {isSavingSettings ? 'Guardando...' : 'Guardar'}
-                </button>
+
+            <div className="flex gap-3 mt-8 pt-4 border-t border-gray-500/20">
+              <button type="button" onClick={() => setIsSettingsOpen(false)} className="flex-1 py-2.5 border text-xs uppercase font-bold rounded hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer">Cancelar</button>
+              <button type="button" disabled={isSavingSettings} onClick={saveSettings} className="flex-1 py-2.5 bg-[#C4A484] hover:bg-[#b08e6f] active:scale-[0.98] disabled:opacity-50 text-[#0D0D0B] text-xs uppercase font-bold rounded transition-all cursor-pointer flex items-center justify-center gap-2">
+                {isSavingSettings ? 'Guardando...' : 'Guardar Configuración'}
+              </button>
             </div>
           </motion.div>
         </div>

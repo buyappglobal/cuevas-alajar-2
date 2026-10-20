@@ -190,11 +190,13 @@ async function sendConfirmationEmail(orderId: string, manual: boolean = false) {
         ${ticketsHtml}
 
         <p><strong>Información importante:</strong></p>
-        <ul style="color: #666; font-size: 14px;">
+        <ul style="color: #666; font-size: 14px; line-height: 1.6;">
           <li><strong>Punto de encuentro:</strong> La visita comienza en el <strong>Centro de Interpretación "Arias Montano"</strong>, situado en la misma Peña. Es imprescindible presentarse allí para validar su entrada antes del inicio.</li>
           <li>Por favor, llega al menos 15 minutos antes de tu hora reservada.</li>
           <li>Presenta este email (digital o impreso) en el Centro de Interpretación.</li>
-          <li>Se recomienda calzado cómodo y ropa adecuada para el interior de las cuevas.</li>
+          <li><strong>Duración estimada:</strong> Duración aproximada de la visita de <strong>1h y 30 minutos</strong>.</li>
+          <li><strong>Recorrido físico:</strong> Consta de <strong>250 ESCALONES</strong> durante todo el recorrido.</li>
+          <li><strong>Calzado y vestimenta:</strong> Usar calzado apto para escalones de piedra, con buena suela y sin tacones, así como ropa adecuada para el interior de las cuevas.</li>
         </ul>
 
         <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999;">

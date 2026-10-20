@@ -68,12 +68,20 @@ export default function App() {
   const [customerPostalCode, setCustomerPostalCode] = useState('');
   const [customerCity, setCustomerCity] = useState('');
   
-  const [summerSettings, setSummerSettings] = useState({ 
+  const [summerSettings, setSummerSettings] = useState<{
+    summerStartDate: string;
+    summerEndDate: string;
+    slot1: string;
+    slot2: string;
+    slot3: string;
+    specialOpenDates?: string[];
+  }>({ 
     summerStartDate: '', 
     summerEndDate: '',
     slot1: '11:00',
     slot2: '12:30',
-    slot3: '16:00'
+    slot3: '16:00',
+    specialOpenDates: []
   });
 
   useEffect(() => {
@@ -156,6 +164,12 @@ export default function App() {
 
   const isHoliday = (dateStr: string) => NATIONAL_HOLIDAYS.includes(dateStr);
 
+  const isSpecialOpenDate = (dateStr: string) => {
+    if (!dateStr) return false;
+    const list = summerSettings.specialOpenDates;
+    return Array.isArray(list) && list.includes(dateStr);
+  };
+
   const isToday = (dateStr: string) => {
     const today = new Date().toISOString().split('T')[0];
     return dateStr === today;
@@ -165,7 +179,7 @@ export default function App() {
     if (!dateStr) return false;
     // No online sales for today
     if (isToday(dateStr)) return false;
-    return isWeekend(dateStr) || isHoliday(dateStr);
+    return isWeekend(dateStr) || isHoliday(dateStr) || isSpecialOpenDate(dateStr);
   };
 
   const isWeekend = (dateStr: string) => {
@@ -189,7 +203,7 @@ export default function App() {
   };
 
   // Calculations
-  const isSpecialPriceDay = isWeekend(date) || isHoliday(date);
+  const isSpecialPriceDay = isWeekend(date) || isHoliday(date) || isSpecialOpenDate(date);
   const calcAdultPrice = isSpecialPriceDay ? 12 : 10;
   const calcReducedPrice = isSpecialPriceDay ? 10 : 8;
   const discount = isBatSeason(date) ? 2 : 0;
@@ -951,6 +965,11 @@ export default function App() {
                         <Info className="w-3 h-3" /> {isToday(date) ? t('booking.todayError') : t('booking.allowedError')}
                       </p>
                     )}
+                    {date && isSpecialOpenDate(date) && (
+                      <p className="text-[10px] text-emerald-400 mt-2 uppercase tracking-[0.05em] flex items-center gap-1 font-bold">
+                        <CheckCircle className="w-3 h-3" /> Día Especial de Apertura Autorizado (Entradas Disponibles)
+                      </p>
+                    )}
                     {date && isSelectableDate(date) && isBatSeason(date) && (
                       <p className="text-[10px] text-[#C4A484] mt-2 uppercase tracking-[0.05em] flex items-center gap-1">
                         <Info className="w-3 h-3" /> {t('booking.batSeasonInfo')}
@@ -1137,6 +1156,19 @@ export default function App() {
               <div className="flex items-center justify-between mb-6">
                 <span className="text-sm uppercase tracking-widest text-[#E5E2D9]/70">{t('booking.total')}</span>
                 <span className="text-3xl font-serif text-[#C4A484]">{totalPrice.toFixed(2)}€</span>
+              </div>
+
+              {/* Información Importante de la Visita */}
+              <div className="bg-[#E5E2D9]/5 border border-[#C4A484]/30 p-3.5 rounded-none mb-6 space-y-1.5 text-xs text-[#E5E2D9]/80">
+                <p className="font-bold text-[#C4A484] uppercase tracking-wider text-[10px] flex items-center gap-1.5 border-b border-[#C4A484]/20 pb-1">
+                  <Info className="w-3.5 h-3.5" /> Información importante de la visita:
+                </p>
+                <ul className="list-disc pl-4 space-y-1 text-[10px] leading-relaxed text-[#E5E2D9]/70">
+                  <li><strong>Punto de encuentro:</strong> Centro de Interpretación "Arias Montano".</li>
+                  <li><strong>Duración aprox.:</strong> 1 hora y 30 minutos (1h 30min).</li>
+                  <li><strong>Recorrido físico:</strong> <strong>250 ESCALONES</strong> durante todo el recorrido.</li>
+                  <li><strong>Calzado:</strong> Apto para escalones de piedra, con buena suela y sin tacones.</li>
+                </ul>
               </div>
 
               {/* Información de Seguridad y Tiempos */}
