@@ -155,11 +155,11 @@ export default function App() {
     return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
   };
 
-  // Holidays list (YYYY-MM-DD)
+  // Holidays list (YYYY-MM-DD) including shifted regional & national holidays
   const NATIONAL_HOLIDAYS = [
-    '2024-01-01', '2024-01-06', '2024-03-28', '2024-03-29', '2024-05-01', '2024-08-15', '2024-10-12', '2024-11-01', '2024-12-06', '2024-12-08', '2024-12-25',
-    '2025-01-01', '2025-01-06', '2025-04-17', '2025-04-18', '2025-05-01', '2025-08-15', '2025-10-12', '2025-11-01', '2025-12-06', '2025-12-08', '2025-12-25',
-    '2026-01-01', '2026-01-06', '2026-04-02', '2026-04-03', '2026-05-01', '2026-08-15', '2026-10-12', '2026-11-01', '2026-12-06', '2026-12-08', '2026-12-25'
+    '2024-01-01', '2024-01-06', '2024-03-28', '2024-03-29', '2024-05-01', '2024-08-15', '2024-10-12', '2024-11-01', '2024-12-06', '2024-12-08', '2024-12-09', '2024-12-25',
+    '2025-01-01', '2025-01-06', '2025-02-28', '2025-04-17', '2025-04-18', '2025-05-01', '2025-08-15', '2025-10-12', '2025-11-01', '2025-11-02', '2025-12-06', '2025-12-08', '2025-12-25',
+    '2026-01-01', '2026-01-06', '2026-02-28', '2026-04-02', '2026-04-03', '2026-05-01', '2026-08-15', '2026-10-12', '2026-11-01', '2026-11-02', '2026-12-06', '2026-12-07', '2026-12-08', '2026-12-25'
   ];
 
   const isHoliday = (dateStr: string) => NATIONAL_HOLIDAYS.includes(dateStr);
@@ -171,8 +171,11 @@ export default function App() {
   };
 
   const isToday = (dateStr: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    return dateStr === today;
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return dateStr === `${yyyy}-${mm}-${dd}`;
   };
 
   const isSelectableDate = (dateStr: string) => {

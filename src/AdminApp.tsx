@@ -53,7 +53,7 @@ export default function AdminApp() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [newSpecialDate, setNewSpecialDate] = useState('');
 
-  const handleAddSpecialDate = (dateToAdd?: string) => {
+  const handleAddSpecialDate = async (dateToAdd?: string) => {
     const targetDate = dateToAdd || newSpecialDate;
     if (!targetDate) return;
     const current = settings.specialOpenDates || [];
@@ -62,14 +62,30 @@ export default function AdminApp() {
       return;
     }
     const updated = [...current, targetDate].sort();
-    setSettings({ ...settings, specialOpenDates: updated });
+    const updatedSettings = { ...settings, specialOpenDates: updated };
+    setSettings(updatedSettings);
     setNewSpecialDate('');
+
+    try {
+      localStorage.setItem('summerSettings', JSON.stringify(updatedSettings));
+      await setDoc(doc(db, 'settings', 'config'), updatedSettings, { merge: true });
+    } catch (err: any) {
+      console.error("Error al guardar día especial:", err);
+    }
   };
 
-  const handleRemoveSpecialDate = (dateToRemove: string) => {
+  const handleRemoveSpecialDate = async (dateToRemove: string) => {
     const current = settings.specialOpenDates || [];
     const updated = current.filter(d => d !== dateToRemove);
-    setSettings({ ...settings, specialOpenDates: updated });
+    const updatedSettings = { ...settings, specialOpenDates: updated };
+    setSettings(updatedSettings);
+
+    try {
+      localStorage.setItem('summerSettings', JSON.stringify(updatedSettings));
+      await setDoc(doc(db, 'settings', 'config'), updatedSettings, { merge: true });
+    } catch (err: any) {
+      console.error("Error al eliminar día especial:", err);
+    }
   };
 
   const formatSpanishDate = (dateStr: string) => {
