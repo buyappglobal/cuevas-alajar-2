@@ -419,8 +419,8 @@ export default function AdminApp() {
       const matchesInfoEmail = infoEmailFilter === 'all' || 
                                (infoEmailFilter === 'sent' ? r.infoEmailSent === true : !r.infoEmailSent);
       
-      // 4. Filtro por Fecha de Visita (DÍA ON/OFF)
-      const matchesVisitDate = !filterByVisitDate || r.date === dateFilter;
+      // 4. Filtro por Fecha de Visita (DÍA ON/OFF) - si el usuario escribe un término de búsqueda, buscamos en todas las fechas para no ocultar la reserva
+      const matchesVisitDate = (!filterByVisitDate || !!searchTerm.trim()) ? true : r.date === dateFilter;
       
       return matchesSearch && matchesStatus && matchesInfoEmail && matchesVisitDate;
     })

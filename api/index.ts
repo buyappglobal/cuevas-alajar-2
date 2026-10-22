@@ -282,7 +282,7 @@ async function sendInfoEmail(orderId: string) {
 
 app.get(['/api/debug-db', '/debug-db'], async (req, res) => {
   try {
-    const snap = await db.collection('reservations').orderBy('createdAt', 'desc').limit(5).get();
+    const snap = await db.collection('reservations').orderBy('createdAt', 'desc').limit(50).get();
     const reservations = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     res.json({
       count: reservations.length,
@@ -294,6 +294,8 @@ app.get(['/api/debug-db', '/debug-db'], async (req, res) => {
     res.status(500).json({ error: e.message });
   }
 });
+
+
 
 app.post(['/api/create-payment', '/create-payment'], async (req, res) => {
   try {
